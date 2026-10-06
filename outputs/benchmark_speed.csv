@@ -1,0 +1,5 @@
+model,params_M,gflops_doc,imagenet_acc1,forward_img_per_s,train_img_per_s,cache_features_70k,one_epoch_52k
+mobilenet_v3_small,1.6,0.06,67.67,270.9,70.8,4m18s,12m14s
+mobilenet_v3_large,4.3,0.22,75.27,77.5,22.9,15m03s,37m54s
+resnet18,11.2,1.81,69.76,49.9,17.4,23m22s,49m48s
+resnet50,23.7,4.09,80.86,17.2,5.6,1h07m56s,2h33m36s

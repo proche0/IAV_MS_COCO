@@ -1,0 +1,6 @@
+backbone,head,loss,dropout,val_f1_global_th,val_mAP,feature_dim,val_f1_per_class_th
+mobilenet_v3_large,mlp,bce,0.3,0.5614,0.6549,1280,0.6145
+mobilenet_v3_large,linear,bce,0.0,0.5317,0.6413,1280,
+resnet18,mlp,bce,0.3,0.4757,0.5932,512,0.5358
+resnet18,mlp,bce,0.0,0.4759,0.5851,512,
+resnet18,linear,bce,0.0,0.4623,0.5642,512,

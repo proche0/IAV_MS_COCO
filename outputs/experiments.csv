@@ -1,0 +1,12 @@
+timestamp,backbone,strategy,head,loss,image_size,resize_mode,lr,weight_decay,dropout,prior_bias,epochs,best_epoch,per_class_th,val_f1,val_precision,val_recall,val_mAP,val_macro_f1,val_micro_f1,seconds,augment,n_train,device
+2026-10-05T19:44:24,mobilenet_v3_large,feature_extraction,linear,bce,224,pad,0.001,0.0001,0.0,True,40,5,False,0.5317,0.6681,0.4416,0.6413,0.6073,0.6638,36.2,,,
+2026-10-05T19:45:00,mobilenet_v3_large,feature_extraction,linear,bce_pos_weight,224,pad,0.001,0.0001,0.0,True,40,2,False,0.5176,0.6128,0.448,0.5815,0.5681,0.5853,35.7,,,
+2026-10-05T19:45:42,mobilenet_v3_large,feature_extraction,linear,focal,224,pad,0.001,0.0001,0.0,True,40,7,False,0.4829,0.5042,0.4633,0.616,0.5886,0.6457,41.4,,,
+2026-10-05T19:46:28,mobilenet_v3_large,feature_extraction,linear,asl,224,pad,0.001,0.0001,0.0,True,40,11,False,0.4804,0.5576,0.422,0.6054,0.5746,0.6301,45.1,,,
+2026-10-05T19:50:41,mobilenet_v3_large,feature_extraction,mlp,bce,224,pad,0.001,0.0001,0.3,True,40,3,False,0.5614,0.5539,0.5692,0.6549,0.5875,0.6166,252.1,,,
+2026-10-05T19:54:56,mobilenet_v3_large,feature_extraction,mlp,bce_pos_weight,224,pad,0.001,0.0001,0.3,True,40,22,False,0.5512,0.5516,0.5509,0.6287,0.583,0.6151,253.6,,,
+2026-10-05T19:59:21,mobilenet_v3_large,feature_extraction,mlp,asl,224,pad,0.001,0.0001,0.3,True,40,13,False,0.5407,0.5508,0.5309,0.6405,0.6056,0.65,264.4,,,
+2026-10-05T20:06:01,mobilenet_v3_large,feature_extraction,linear,bce,224,pad,0.001,0.0001,0.0,False,40,40,False,0.4574,0.5049,0.418,0.6241,0.5879,0.6575,38.8,,,
+2026-10-05T20:18:53,resnet18,feature_extraction,linear,bce,224,pad,0.001,0.0001,0.0,True,40,32,False,0.4623,0.4513,0.4739,0.5642,0.5449,0.595,15.3,,,
+2026-10-05T20:19:47,resnet18,feature_extraction,mlp,bce,224,pad,0.001,0.0001,0.0,True,40,12,False,0.4759,0.5129,0.4439,0.5851,0.5614,0.6176,51.2,,,
+2026-10-05T20:22:34,resnet18,feature_extraction,mlp,bce,224,pad,0.001,0.0001,0.3,True,40,20,False,0.4757,0.5045,0.45,0.5932,0.566,0.6182,85.3,,,

@@ -1,0 +1,38 @@
+# Caches de features et poids : volumineux et regenerables
+features/
+runs/
+*.pth
+*.pt
+*.npz
+*.npy
+
+# Journaux d'execution
+outputs/logs/
+
+# Les indices de decoupage (65 000 entiers) sont regeneres a l'identique
+# par data.get_split : inutile de les versionner.
+outputs/split_*.json
+
+# Les resultats d'experiences sont petits et constituent le rendu : on les garde.
+!outputs/
+!outputs/*.csv
+!outputs/*.json
+!outputs/figures/
+!outputs/figures/*.png
+
+# Le dataset ne doit jamais etre commite
+ms-coco/
+
+# Environnements
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Divers
+.DS_Store

@@ -1,0 +1,20 @@
+# Challenge MS COCO multi-label - dependances
+#
+# torch et torchvision doivent provenir du meme build (cpu ou cu12x), sinon
+# l'extension C de torchvision ne se charge pas ("operator torchvision::nms
+# does not exist"). Pour une machine sans GPU :
+#
+#   pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cpu
+#
+# Sur Colab, torch et torchvision sont deja installes : n'installer que le reste.
+
+torch==2.7.0
+torchvision==0.22.0
+
+numpy>=1.26
+pandas>=2.0
+pillow>=10.0
+matplotlib>=3.8
+tqdm>=4.66
+tensorboard>=2.16
+torchinfo>=1.8
