@@ -56,7 +56,7 @@ local. Le fine-tuning se lance avec `scripts/train.py` et `--amp` (précision
 mixte). Les poids ImageNet (`Weights.DEFAULT`) sont téléchargés
 automatiquement au premier entraînement.
 
-Débits de la RTX 4060 Ti, à remplir après :
+Débits de la RTX 4060 Ti, mesurés le 6 octobre 2026 (batch 32, 8 batches, FP32, sans poids pré-entraînés) :
 
 ```bash
 python scripts/benchmark_speed.py --models mobilenet_v3_small mobilenet_v3_large efficientnet_b0 efficientnet_b1 efficientnet_b3 resnet18 efficientnet_b4 resnet50 convnext_tiny swin_t maxvit_t efficientnet_v2_s --batch-size 32 --batches 8
@@ -67,18 +67,18 @@ précision classique, pas `--amp`, et n'a pas besoin des poids pré-entraînés.
 
 | Backbone | Forward | Entraînement | Cache 70 k | 1 époque (52 k) |
 | --- | --- | --- | --- | --- |
-| mobilenet_v3_small | | | | |
-| mobilenet_v3_large | | | | |
-| efficientnet_b0 | | | | |
-| efficientnet_b1 | | | | |
-| efficientnet_b3 | | | | |
-| resnet18 | | | | |
-| efficientnet_b4 | | | | |
-| resnet50 | | | | |
-| convnext_tiny | | | | |
-| swin_t | | | | |
-| maxvit_t | | | | |
-| efficientnet_v2_s | | | | |
+| mobilenet_v3_small | 12727.6 img/s | 2618.1 img/s | 5s | 20s |
+| mobilenet_v3_large | 4873.2 img/s | 771.9 img/s | 14s | 1m07s |
+| efficientnet_b0 | 2097.3 img/s | 415.7 img/s | 33s | 2m05s |
+| efficientnet_b1 | 1212.8 img/s | 261.6 img/s | 58s | 3m19s |
+| efficientnet_b3 | 870.6 img/s | 181.5 img/s | 1m20s | 4m47s |
+| resnet18 | 27300.0 img/s | 820.7 img/s | 3s | 1m03s |
+| efficientnet_b4 | 514.9 img/s | 86.5 img/s | 2m16s | 10m01s |
+| resnet50 | 891.1 img/s | 174.9 img/s | 1m19s | 4m57s |
+| convnext_tiny | 454.6 img/s | 89.6 img/s | 2m34s | 9m40s |
+| swin_t | 461.4 img/s | 116.8 img/s | 2m32s | 7m25s |
+| maxvit_t | 111.0 img/s | 11.2 img/s | 10m30s | 1h17m35s |
+| efficientnet_v2_s | 504.0 img/s | 67.8 img/s | 2m19s | 12m47s |
 
 L'étude comparative des têtes reste sur des features mises en cache : un seul
 passage forward, puis quelques secondes par expérience. Le fine-tuning

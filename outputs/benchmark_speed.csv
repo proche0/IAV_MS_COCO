@@ -1,5 +1,13 @@
 model,params_M,gflops_doc,imagenet_acc1,forward_img_per_s,train_img_per_s,cache_features_70k,one_epoch_52k
-mobilenet_v3_small,1.6,0.06,67.67,270.9,70.8,4m18s,12m14s
-mobilenet_v3_large,4.3,0.22,75.27,77.5,22.9,15m03s,37m54s
-resnet18,11.2,1.81,69.76,49.9,17.4,23m22s,49m48s
-resnet50,23.7,4.09,80.86,17.2,5.6,1h07m56s,2h33m36s
+mobilenet_v3_small,1.6,0.06,67.67,12727.6,2618.1,5s,20s
+mobilenet_v3_large,4.3,0.22,75.27,4873.2,771.9,14s,1m07s
+efficientnet_b0,4.1,0.39,77.69,2097.3,415.7,33s,2m05s
+efficientnet_b1,6.6,0.69,79.84,1212.8,261.6,58s,3m19s
+efficientnet_b3,10.8,1.83,82.01,870.6,181.5,1m20s,4m47s
+resnet18,11.2,1.81,69.76,27300.0,820.7,3s,1m03s
+efficientnet_b4,17.7,4.39,83.38,514.9,86.5,2m16s,10m01s
+resnet50,23.7,4.09,80.86,891.1,174.9,1m19s,4m57s
+convnext_tiny,27.9,4.46,82.52,454.6,89.6,2m34s,9m40s
+swin_t,27.6,4.49,81.47,461.4,116.8,2m32s,7m25s
+maxvit_t,30.4,5.56,83.7,111.0,11.2,10m30s,1h17m35s
+efficientnet_v2_s,20.3,8.37,84.23,504.0,67.8,2m19s,12m47s

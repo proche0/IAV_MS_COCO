@@ -62,6 +62,7 @@ sorties. L'emplacement de cette couche diffère selon la famille :
 | --- | --- | --- |
 | resnet18 | `fc` | 512 |
 | resnet50 | `fc` | 2048 |
+| vgg16 | `classifier.6` | 4096 |
 | shufflenet_v2_x1_0 | `fc` | 1024 |
 | mobilenet_v3_small | `classifier.3` | 1024 |
 | mobilenet_v3_large | `classifier.3` | 1280 |
@@ -115,9 +116,10 @@ Deux stratégies de transfer learning sont donc comparables :
 Une architecture par ligne du tableau torchvision, avec `Weights.DEFAULT` :
 V1 et V2 ont le même coût, et `DEFAULT` pointe vers la meilleure recette
 (V2 quand elle existe). On garde le front accuracy ImageNet / GFLOPS, plus
-ResNet18 comme baseline du cours, dans une zone confortable pour un
-fine-tuning en précision mixte sur la RTX 4060 Ti (au plus environ 30 M de
-paramètres et 8,5 GFLOPS).
+ResNet18 comme baseline du cours. VGG16 y figure aussi, parce que c'est
+l'architecture vue en cours, malgré 138 M de paramètres et 15,5 GFLOPS : il
+dépasse le budget confortable de la RTX 4060 Ti (environ 30 M de paramètres
+et 8,5 GFLOPS) et n'est pas le candidat retenu pour le fine-tuning.
 
 Les colonnes de débit sont celles de l'ancienne machine (Intel i5, sans GPU).
 Les modèles ajoutés pour la carte graphique n'y ont pas encore été mesurés.
@@ -132,6 +134,7 @@ remplir les débits de la RTX 4060 Ti.
 | efficientnet_b1 | 7,8 M | 0,69 | 79,8 % | — | — | gros gain pour un coût encore faible, poids V2 |
 | efficientnet_b3 | 12,2 M | 1,83 | 82,0 % | — | — | meilleure accuracy au coût d'un ResNet18 |
 | **resnet18** | 11,7 M | 1,81 | 69,8 % | 50 img/s | 17 img/s | baseline du cours |
+| **vgg16** | 138,4 M | 15,47 | 71,6 % | — | — | architecture du cours, hors budget confortable |
 | efficientnet_b4 | 19,3 M | 4,39 | 83,4 % | — | — | juste sous ConvNeXt-Tiny |
 | **resnet50** | 25,6 M | 4,09 | 80,9 % | 17 img/s | 5,6 img/s | référence de fine-tuning, poids V2 |
 | convnext_tiny | 28,6 M | 4,46 | 82,5 % | — | — | convolution moderne |
@@ -151,13 +154,18 @@ Le coût reste un critère, mais la carte graphique permet de comparer toute
 cette liste, pas seulement trois architectures. Au-delà d'environ 15 GFLOPS
 (ConvNeXt-Base, EfficientNet-B7, ViT-H), le gain ImageNet face à
 EfficientNetV2-S ne justifie pas le temps de fine-tuning. AlexNet, SqueezeNet,
-VGG, MNASNet, DenseNet, RegNet, Inception, GoogLeNet et les variantes lourdes
+MNASNet, DenseNet, RegNet, Inception, GoogLeNet et les variantes lourdes
 sont donc hors liste : un modèle retenu fait au moins aussi bien pour moins
-cher, ou ne tient pas dans le budget. Les poids SWAG-E2E changent la
-résolution et le coût ; ils ne sont pas utilisés.
+cher, ou ne tient pas dans le budget. VGG16 est l'exception : il est dans le
+registre comme architecture du cours, pas comme meilleur rapport coût /
+précision. Les poids SWAG-E2E changent la résolution et le coût ; ils ne
+sont pas utilisés.
 
 - **ResNet18** est la baseline : c'est l'architecture du TP, elle sert de point
   de comparaison avec le travail déjà fait sur CIFAR-10.
+- **VGG16** est l'architecture vue en cours. Ses poids ImageNet (`IMAGENET1K_V1`,
+  71,6 % top-1) restent loin d'EfficientNetV2-S, pour un coût bien plus élevé.
+  Il n'est pas entraîné tant que le F1 d'EfficientNetV2-S n'est pas maximisé.
 - **MobileNetV3-Large** est le meilleur modèle à backbone gelé obtenu jusqu'ici.
   Il est 8 fois moins coûteux que ResNet18 (0,22 contre 1,81 GFLOPS) et plus
   précis sur ImageNet (75,3 % contre 69,8 %).

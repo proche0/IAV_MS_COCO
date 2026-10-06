@@ -59,6 +59,9 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
     "resnet18": ModelInfo(
         "resnet18", "resnet18", "ResNet18_Weights",
         11.7, 1.81, 69.76, "baseline de reference du cours"),
+    "vgg16": ModelInfo(
+        "vgg16", "vgg16", "VGG16_Weights",
+        138.4, 15.47, 71.59, "architecture du cours ; couteuse, pas le meilleur rapport"),
     "resnet50": ModelInfo(
         "resnet50", "resnet50", "ResNet50_Weights",
         25.6, 4.09, 80.86, "poids IMAGENET1K_V2 (recette d'entrainement amelioree)"),

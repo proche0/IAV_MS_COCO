@@ -10,3 +10,4 @@ timestamp,backbone,strategy,head,loss,image_size,resize_mode,lr,weight_decay,dro
 2026-10-05T20:18:53,resnet18,feature_extraction,linear,bce,224,pad,0.001,0.0001,0.0,True,40,32,False,0.4623,0.4513,0.4739,0.5642,0.5449,0.595,15.3,,,
 2026-10-05T20:19:47,resnet18,feature_extraction,mlp,bce,224,pad,0.001,0.0001,0.0,True,40,12,False,0.4759,0.5129,0.4439,0.5851,0.5614,0.6176,51.2,,,
 2026-10-05T20:22:34,resnet18,feature_extraction,mlp,bce,224,pad,0.001,0.0001,0.3,True,40,20,False,0.4757,0.5045,0.45,0.5932,0.566,0.6182,85.3,,,
+2026-10-06T12:52:09,efficientnet_v2_s,fine_tuning,linear,asl,224,pad,5e-05,0.0001,0.0,,10,7,True,0.6693,0.6262,0.7187,0.7423,0.6744,0.6394,2249.6,flip,52047,cuda (NVIDIA GeForce RTX 4060 Ti)
