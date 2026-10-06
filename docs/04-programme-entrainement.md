@@ -4,17 +4,17 @@ La partie 4 du sujet donne le squelette attendu du programme principal. Ce
 document met chaque section du squelette en correspondance avec notre code, et
 justifie les choix faits.
 
-Un point de contexte détermine toute l'organisation : **la machine de
-développement n'a pas de GPU**. Nous avons donc deux programmes d'entraînement
-complémentaires plutôt qu'un seul.
+L'ancienne machine de développement n'avait pas de GPU, d'où deux programmes
+d'entraînement complémentaires. Les deux tournent maintenant en local
+(NVIDIA RTX 4060 Ti, Intel i9-13900KF, 32 Go de RAM).
 
 ---
 
 ## 4.0 Pourquoi deux programmes
 
 Débits mesurés par [`scripts/benchmark_speed.py`](../scripts/benchmark_speed.py)
-sur le CPU de développement (Intel i5-1135G7, 4 cœurs / 4 threads PyTorch), en
-224 px :
+sur l'ancienne machine (Intel i5-1135G7, 4 cœurs / 4 threads PyTorch, pas de
+GPU), en 224 px :
 
 | Backbone | GFLOPS | Forward | Entraînement | Cache des 70 k images | 1 époque (52 k) |
 | --- | --- | --- | --- | --- | --- |
@@ -26,9 +26,11 @@ sur le CPU de développement (Intel i5-1135G7, 4 cœurs / 4 threads PyTorch), en
 Le décodage JPEG et les transformations tournent à 1 161 img/s par worker : ce
 n'est jamais le goulot, c'est bien le calcul du réseau qui limite.
 
-Conclusion : un fine-tuning ResNet18 de 10 époques coûterait 8 heures en local,
-et une étude comparative de plusieurs architectures est hors de portée. D'où la
-séparation :
+Sur cette ancienne machine, un fine-tuning ResNet18 de 10 époques coûterait
+8 heures, et une étude comparative de plusieurs architectures était hors de
+portée. La séparation reste utile sur la RTX 4060 Ti : le cache de features
+rend les expériences de tête presque gratuites, et le fine-tuning complet met
+à jour tout le réseau.
 
 ```mermaid
 flowchart LR
@@ -36,7 +38,7 @@ flowchart LR
     B --> C["features/*.npz<br/>float16"]
     C --> D["train_head.py<br/>quelques secondes par experience"]
     D --> E["etude comparative:<br/>couts, tetes, hyper-parametres"]
-    A --> F["train.py<br/>fine-tuning complet, GPU Colab"]
+    A --> F["train.py<br/>fine-tuning complet, GPU local, --amp"]
     E --> G["tune_thresholds.py<br/>calibration par classe"]
     F --> G
     G --> H["predict.py<br/>predictions.json"]
@@ -45,9 +47,13 @@ flowchart LR
 - **`train_head.py` (extraction de features)** — le backbone pré-entraîné est
   gelé, donc ses sorties ne dépendent pas de l'apprentissage. Un seul passage
   forward sur le dataset suffit, et chaque expérience de tête se mesure ensuite
-  en secondes. C'est ce qui rend l'étude comparative réalisable sans GPU.
-- **`train.py` (fine-tuning)** — met à jour tout le réseau. Plus performant, mais
-  réservé au GPU Colab (voir [`notebooks/colab_finetune.ipynb`](../notebooks/colab_finetune.ipynb)).
+  en secondes. C'est ce qui rend l'étude comparative des têtes rapide.
+- **`train.py` (fine-tuning)** — met à jour tout le réseau. Plus performant. Se
+  lance en local, avec `--amp` :
+
+```bash
+python3 scripts/train.py --model resnet50 --epochs 10 --loss asl --amp
+```
 
 Les deux produisent des checkpoints compatibles avec `tune_thresholds.py` et
 `predict.py`, et écrivent dans le même registre `outputs/experiments.csv`.
@@ -72,7 +78,7 @@ dans les journaux d'expériences.
 
 `PATHS` ([`config.py`](../src/coco_mlc/config.py)) dérive tous les chemins d'une
 racine unique, surchargeable par la variable d'environnement `MSCOCO_ROOT`. Le
-même code tourne donc en local et sur Colab sans modification.
+code suit le dataset sans modification, où qu'il soit installé.
 `PATHS.check()` échoue immédiatement avec un message explicite si la structure
 attendue est absente.
 
@@ -227,18 +233,46 @@ Le `--sweep` fait varier **une seule chose à la fois** par rapport à la baseli
 | 6 | MLP | `bce_pos_weight` |
 | 7 | MLP | `asl` |
 
-### Fine-tuning sur GPU
+### Mesurer les débits sur cette machine
 
 ```bash
+python scripts/benchmark_speed.py --models mobilenet_v3_small mobilenet_v3_large efficientnet_b0 efficientnet_b1 efficientnet_b3 resnet18 efficientnet_b4 resnet50 convnext_tiny swin_t maxvit_t efficientnet_v2_s --batch-size 32 --batches 8
+```
+
+Le script prend le GPU s'il est disponible. Il n'utilise pas `--amp` : les
+débits d'entraînement sont en précision classique. Le CSV est écrit dans
+`outputs/benchmark_speed.csv`.
+
+### Fine-tuning en local
+
+`--amp` active la précision mixte. Une seule variable change entre les runs,
+pour que les écarts soient interprétables.
+
+```bash
+# Test rapide du pipeline
+python3 scripts/train.py --model mobilenet_v3_small --max-images 2000 --epochs 1 --amp
+
+# Baseline fine-tunée, à comparer à la tête sur features.
+python3 scripts/train.py --model resnet18 --epochs 10 --loss bce \
+    --batch-size 128 --lr 1e-4 --amp --num-workers 2 --tensorboard
+
+# Même modèle, fonction de coût adaptée au déséquilibre.
+python3 scripts/train.py --model resnet18 --epochs 10 --loss asl \
+    --batch-size 128 --lr 1e-4 --amp --num-workers 2
+
+# Backbone plus performant (poids IMAGENET1K_V2, 80,9 % top-1).
 python3 scripts/train.py --model resnet50 --epochs 10 --loss asl \
-    --batch-size 96 --amp --tensorboard
+    --batch-size 96 --lr 1e-4 --amp --num-workers 2 --tensorboard
+
+# Convolution moderne, transformer, et les autres candidats du registre.
+python3 scripts/train.py --model convnext_tiny --epochs 10 --loss asl \
+    --batch-size 64 --lr 5e-5 --amp --num-workers 2
+python3 scripts/train.py --model swin_t --epochs 10 --loss asl \
+    --batch-size 64 --lr 5e-5 --amp --num-workers 2
 ```
 
-Test rapide du pipeline en local avant d'envoyer sur Colab :
-
-```bash
-python3 scripts/train.py --model mobilenet_v3_small --max-images 2000 --epochs 1
-```
+Les poids ImageNet (`Weights.DEFAULT`) sont téléchargés automatiquement au
+premier lancement, dans `~/.cache/torch/hub/checkpoints`.
 
 ---
 

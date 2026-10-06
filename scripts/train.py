@@ -1,14 +1,16 @@
 """Fine-tuning complet d'un reseau pre-entraine sur MS COCO multi-label.
 
-Suit le squelette de programme decrit dans la partie 4 du sujet. Coute cher :
-une epoque ResNet18 a 224 px represente environ 50 minutes sur le CPU de
-developpement, contre moins d'une minute sur un GPU Colab. En local, utiliser
-``--max-images`` pour valider le pipeline, et reserver les entrainements
-complets au GPU.
+Suit le squelette de programme decrit dans la partie 4 du sujet. A lancer en
+local sur GPU : ``--amp`` active la precision mixte. Hors CUDA, le flag est
+ignore avec un avertissement. ``--max-images`` sert a valider le pipeline sur
+un sous-ensemble.
+
+Les poids ImageNet (``Weights.DEFAULT``) sont telecharges automatiquement au
+premier lancement, dans le cache torchvision.
 
 Usage :
-    python3 scripts/train.py --model resnet18 --epochs 8 --loss asl
-    python3 scripts/train.py --model resnet18 --max-images 2000 --epochs 1   # test rapide
+    python3 scripts/train.py --model resnet18 --epochs 8 --loss asl --amp
+    python3 scripts/train.py --model resnet18 --max-images 2000 --epochs 1 --amp
     python3 scripts/train.py --model resnet50 --epochs 10 --amp --batch-size 96
 """
 

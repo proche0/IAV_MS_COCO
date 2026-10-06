@@ -96,58 +96,80 @@ pour MobileNetV3-Large.
 
 Comme ces features ne dépendent pas de l'apprentissage (le backbone est gelé),
 elles peuvent être calculées une fois et mises en cache. C'est la base de notre
-stratégie en l'absence de GPU, décrite en
-[partie 4](04-programme-entrainement.md#40-pourquoi-deux-programmes).
+stratégie de pré-calcul, décrite en
+[partie 4](04-programme-entrainement.md#40-pourquoi-deux-programmes) : un passage
+forward, puis des expériences de tête en quelques secondes. Le fine-tuning
+complet tourne sur le GPU local.
 
 Deux stratégies de transfer learning sont donc comparables :
 
 | Stratégie | Ce qui est appris | Coût | Quand |
 | --- | --- | --- | --- |
-| Extraction de features | la tête seulement | 1 forward + quelques secondes par expérience | CPU, étude comparative large |
-| Fine-tuning | tout le réseau | plusieurs époques complètes | GPU, meilleure performance finale |
+| Extraction de features | la tête seulement | 1 forward + quelques secondes par expérience | étude comparative des têtes |
+| Fine-tuning | tout le réseau | plusieurs époques complètes | GPU local, `--amp`, meilleure performance finale |
 
 ---
 
 ## 3. Les candidats retenus
 
-Extrait du tableau des poids de la doc torchvision (précision top-1 ImageNet,
-GFLOPS à 224×224), complété par le débit mesuré sur notre CPU
-([`scripts/benchmark_speed.py`](../scripts/benchmark_speed.py)) :
+Une architecture par ligne du tableau torchvision, avec `Weights.DEFAULT` :
+V1 et V2 ont le même coût, et `DEFAULT` pointe vers la meilleure recette
+(V2 quand elle existe). On garde le front accuracy ImageNet / GFLOPS, plus
+ResNet18 comme baseline du cours, dans une zone confortable pour un
+fine-tuning en précision mixte sur la RTX 4060 Ti (au plus environ 30 M de
+paramètres et 8,5 GFLOPS).
+
+Les colonnes de débit sont celles de l'ancienne machine (Intel i5, sans GPU).
+Les modèles ajoutés pour la carte graphique n'y ont pas encore été mesurés.
+Relancer [`scripts/benchmark_speed.py`](../scripts/benchmark_speed.py) pour
+remplir les débits de la RTX 4060 Ti.
 
 | Modèle | Params | GFLOPS | top-1 | Forward CPU | Entraînement CPU | Rôle |
 | --- | --- | --- | --- | --- | --- | --- |
-| mobilenet_v3_small | 2,5 M | 0,06 | 67,7 % | 271 img/s | 71 img/s | valider le pipeline rapidement |
-| shufflenet_v2_x1_0 | 2,3 M | 0,14 | 69,4 % | — | — | alternative très légère |
-| **mobilenet_v3_large** | 5,5 M | 0,22 | 75,3 % | 78 img/s | 23 img/s | meilleur rapport coût/précision en CPU |
-| efficientnet_b0 | 5,3 M | 0,39 | 77,7 % | — | — | plus précis pour un coût proche |
-| **resnet18** | 11,7 M | 1,81 | 69,8 % | 50 img/s | 17 img/s | baseline de référence du cours |
-| **resnet50** | 25,6 M | 4,09 | **80,9 %** | 17 img/s | 5,6 img/s | référence GPU, poids `IMAGENET1K_V2` |
-| convnext_tiny | 28,6 M | 4,46 | 82,5 % | — | — | architecture convolutive moderne |
+| mobilenet_v3_small | 2,5 M | 0,06 | 67,7 % | 271 img/s | 71 img/s | test rapide du pipeline |
+| **mobilenet_v3_large** | 5,5 M | 0,22 | 75,3 % | 78 img/s | 23 img/s | meilleur modèle gelé actuel, poids V2 |
+| efficientnet_b0 | 5,3 M | 0,39 | 77,7 % | — | — | meilleur rapport juste au-dessus de MobileNet |
+| efficientnet_b1 | 7,8 M | 0,69 | 79,8 % | — | — | gros gain pour un coût encore faible, poids V2 |
+| efficientnet_b3 | 12,2 M | 1,83 | 82,0 % | — | — | meilleure accuracy au coût d'un ResNet18 |
+| **resnet18** | 11,7 M | 1,81 | 69,8 % | 50 img/s | 17 img/s | baseline du cours |
+| efficientnet_b4 | 19,3 M | 4,39 | 83,4 % | — | — | juste sous ConvNeXt-Tiny |
+| **resnet50** | 25,6 M | 4,09 | 80,9 % | 17 img/s | 5,6 img/s | référence de fine-tuning, poids V2 |
+| convnext_tiny | 28,6 M | 4,46 | 82,5 % | — | — | convolution moderne |
 | swin_t | 28,3 M | 4,49 | 81,5 % | — | — | transformer hiérarchique |
-| efficientnet_v2_s | 21,5 M | 8,37 | 84,2 % | — | — | le plus précis, le plus coûteux |
+| maxvit_t | 30,9 M | 5,56 | 83,7 % | — | — | meilleure accuracy de cette bande |
+| efficientnet_v2_s | 21,5 M | 8,37 | 84,2 % | — | — | plus haute accuracy ImageNet encore raisonnable |
 
-Registre dans [`models.py`](../src/coco_mlc/models.py) (`MODEL_REGISTRY`), avec
-les métadonnées pour les tableaux comparatifs.
+`shufflenet_v2_x1_0` reste dans le registre pour les commandes déjà écrites.
+Il n'est pas dans cette liste : 69,4 % à 0,14 GFLOPS, derrière
+MobileNetV3-Large.
+
+Registre dans [`models.py`](../src/coco_mlc/models.py) (`MODEL_REGISTRY`).
 
 ### Logique de sélection
 
-**Le coût de calcul n'est pas une considération secondaire ici, c'est la
-contrainte principale.** À budget fixe, mieux vaut comparer proprement trois
-architectures et calibrer les seuils que lancer un seul EfficientNetV2-S à moitié
-entraîné.
+Le coût reste un critère, mais la carte graphique permet de comparer toute
+cette liste, pas seulement trois architectures. Au-delà d'environ 15 GFLOPS
+(ConvNeXt-Base, EfficientNet-B7, ViT-H), le gain ImageNet face à
+EfficientNetV2-S ne justifie pas le temps de fine-tuning. AlexNet, SqueezeNet,
+VGG, MNASNet, DenseNet, RegNet, Inception, GoogLeNet et les variantes lourdes
+sont donc hors liste : un modèle retenu fait au moins aussi bien pour moins
+cher, ou ne tient pas dans le budget. Les poids SWAG-E2E changent la
+résolution et le coût ; ils ne sont pas utilisés.
 
 - **ResNet18** est la baseline : c'est l'architecture du TP, elle sert de point
   de comparaison avec le travail déjà fait sur CIFAR-10.
-- **MobileNetV3-Large** est intéressant au-delà de sa légèreté : il est 8 fois
-  moins coûteux que ResNet18 (0,22 contre 1,81 GFLOPS) **tout en étant plus
-  précis sur ImageNet** (75,3 % contre 69,8 %). Son vecteur de features est
-  aussi plus riche (1 280 contre 512).
-- **ResNet50 avec les poids V2** est le candidat sérieux pour la soumission
-  finale : 80,9 % de top-1, et des features de 2 048 dimensions qui se prêtent
-  bien à une tête linéaire.
-- **ConvNeXt-Tiny** et **Swin-T** permettent de comparer une convolution moderne
-  et un transformer à coût de calcul quasi identique (4,46 contre 4,49 GFLOPS),
-  comparaison intéressante pour le rapport. Réservés au GPU.
+- **MobileNetV3-Large** est le meilleur modèle à backbone gelé obtenu jusqu'ici.
+  Il est 8 fois moins coûteux que ResNet18 (0,22 contre 1,81 GFLOPS) et plus
+  précis sur ImageNet (75,3 % contre 69,8 %).
+- **EfficientNet-B0, B1, B3 et B4** couvrent le front coût / accuracy entre
+  MobileNet et ConvNeXt-Tiny.
+- **ResNet50 avec les poids V2** est la référence de fine-tuning : 80,9 % de
+  top-1, et des features de 2 048 dimensions.
+- **ConvNeXt-Tiny**, **Swin-T** et **MaxVit-T** comparent une convolution
+  moderne, un transformer hiérarchique et un mélange des deux, autour de
+  4 à 6 GFLOPS.
+- **EfficientNetV2-S** est le plus précis de la liste (84,2 %) à un coût
+  encore compatible avec la RTX 4060 Ti.
 
 ### Observation attendue sur la précision ImageNet
 

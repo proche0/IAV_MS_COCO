@@ -7,6 +7,10 @@ l'est pas forcement. Les estimations sont extrapolees du debit mesure.
 Usage :
     python3 scripts/benchmark_speed.py
     python3 scripts/benchmark_speed.py --models resnet18 resnet50 --batches 5
+
+Les modeles par defaut sont la short-list retenue pour la RTX 4060 Ti.
+Le script n'utilise pas la precision mixte : les debits d'entrainement sont
+en FP32, et les poids pre-entraines ne sont pas telecharges.
 """
 
 from __future__ import annotations
@@ -31,7 +35,10 @@ N_TEST_IMAGES = 4_952
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--models", nargs="+",
-                   default=["mobilenet_v3_small", "mobilenet_v3_large", "resnet18", "resnet50"])
+                   default=["mobilenet_v3_small", "mobilenet_v3_large", "efficientnet_b0",
+                            "efficientnet_b1", "efficientnet_b3", "resnet18",
+                            "efficientnet_b4", "resnet50", "convnext_tiny", "swin_t",
+                            "maxvit_t", "efficientnet_v2_s"])
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--batches", type=int, default=4, help="batches mesures (apres rodage)")
     p.add_argument("--image-size", type=int, default=DEFAULTS["image_size"])

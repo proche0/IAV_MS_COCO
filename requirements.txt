@@ -1,12 +1,16 @@
 # Challenge MS COCO multi-label - dependances
 #
-# torch et torchvision doivent provenir du meme build (cpu ou cu12x), sinon
+# torch et torchvision doivent provenir du meme build CUDA 12, sinon
 # l'extension C de torchvision ne se charge pas ("operator torchvision::nms
-# does not exist"). Pour une machine sans GPU :
+# does not exist"). Machine de travail : RTX 4060 Ti. Installer d'abord
+# depuis l'index CUDA, puis ce fichier : le second pip voit la version deja
+# satisfaite et ne la remplace pas par le wheel PyPI.
 #
-#   pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cpu
+#   pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128
 #
-# Sur Colab, torch et torchvision sont deja installes : n'installer que le reste.
+# cu128 demande un pilote NVIDIA serie 570 ou plus recent. Pilote plus ancien :
+#
+#   pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu124
 
 torch==2.7.0
 torchvision==0.22.0

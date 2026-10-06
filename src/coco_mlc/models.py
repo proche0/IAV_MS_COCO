@@ -46,7 +46,16 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
         5.5, 0.22, 75.27, "meilleur rapport cout/precision en CPU"),
     "efficientnet_b0": ModelInfo(
         "efficientnet_b0", "efficientnet_b0", "EfficientNet_B0_Weights",
-        5.3, 0.39, 77.69, ""),
+        5.3, 0.39, 77.69, "meilleur rapport juste au-dessus de MobileNet"),
+    "efficientnet_b1": ModelInfo(
+        "efficientnet_b1", "efficientnet_b1", "EfficientNet_B1_Weights",
+        7.8, 0.69, 79.84, "poids IMAGENET1K_V2"),
+    "efficientnet_b3": ModelInfo(
+        "efficientnet_b3", "efficientnet_b3", "EfficientNet_B3_Weights",
+        12.2, 1.83, 82.01, "meilleure accuracy au cout d'un ResNet18"),
+    "efficientnet_b4": ModelInfo(
+        "efficientnet_b4", "efficientnet_b4", "EfficientNet_B4_Weights",
+        19.3, 4.39, 83.38, ""),
     "resnet18": ModelInfo(
         "resnet18", "resnet18", "ResNet18_Weights",
         11.7, 1.81, 69.76, "baseline de reference du cours"),
@@ -59,6 +68,9 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
     "swin_t": ModelInfo(
         "swin_t", "swin_t", "Swin_T_Weights",
         28.3, 4.49, 81.47, "transformer hierarchique, necessite un GPU"),
+    "maxvit_t": ModelInfo(
+        "maxvit_t", "maxvit_t", "MaxVit_T_Weights",
+        30.9, 5.56, 83.70, "meilleure accuracy de cette bande de cout"),
     "efficientnet_v2_s": ModelInfo(
         "efficientnet_v2_s", "efficientnet_v2_s", "EfficientNet_V2_S_Weights",
         21.5, 8.37, 84.23, "le plus precis sur ImageNet parmi les candidats"),

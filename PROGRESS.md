@@ -1,6 +1,6 @@
 # Journal de bord — Challenge MS COCO multi-label
 
-Groupe : Tayeb et Paul. Dernière mise à jour : 5 octobre 2026.
+Groupe : Tayeb et Paul. Dernière mise à jour : 6 octobre 2026.
 
 ---
 
@@ -8,20 +8,21 @@ Groupe : Tayeb et Paul. Dernière mise à jour : 5 octobre 2026.
 
 | Étape | État |
 | --- | --- |
-| Environnement (torch + torchvision CPU, poids pré-entraînés) | fait |
+| Environnement (torch + torchvision CUDA 12.8, consignes dans `requirements.txt`) | installation à lancer |
 | Bibliothèque `src/coco_mlc/` (données, modèles, coûts, métriques, moteur, seuils) | fait |
 | Métrique du serveur reproduite et vérifiée contre le sujet | fait |
 | Exploration du dataset, statistiques et figures | fait |
-| Benchmark des débits CPU | fait |
+| Benchmark des débits CPU (ancienne machine) | fait |
+| Benchmark des débits RTX 4060 Ti | à faire — commande dans la section matériel |
 | Cache de features MobileNetV3-Large | fait |
 | Cache de features ResNet18 | fait (32 min 33 s, 33,3 img/s) |
-| Cache de features ResNet50 | non fait en CPU (estimé 68 min, réservé au fine-tuning Colab) |
+| Cache de features ResNet50 | non fait ; fine-tuning local à la place |
 | Étude comparative têtes × fonctions de coût | fait (7 configs MobileNet + 3 ResNet18) |
 | Comparaison de backbones gelés (MobileNet vs ResNet18) | fait |
 | Calibration des seuils par classe | fait |
 | JSON de soumission produit et vérifié | fait |
 | Pipeline de fine-tuning (`scripts/train.py`) | fait (smoke test 512 images OK) |
-| Fine-tuning complet sur GPU Colab | à faire — notebook prêt |
+| Fine-tuning complet en local (`scripts/train.py --amp`) | à faire |
 | Soumission au leaderboard | à faire — JSON prêt |
 | Notebook d'analyse | fait |
 | Documentation parties 3, 4, 5, 6 | fait |
@@ -49,30 +50,51 @@ F1 = 0,0337. C'est le plancher à battre largement.
 
 ## Contrainte matérielle et stratégie retenue
 
-Machine de développement : Intel i5-1135G7, 4 threads PyTorch, **pas de GPU**.
-Débits mesurés (`outputs/benchmark_speed.csv`) :
+Machine de travail : NVIDIA RTX 4060 Ti, Intel i9-13900KF, 32 Go de RAM.
+L'extraction de features et le fine-tuning complet tournent tous les deux en
+local. Le fine-tuning se lance avec `scripts/train.py` et `--amp` (précision
+mixte). Les poids ImageNet (`Weights.DEFAULT`) sont téléchargés
+automatiquement au premier entraînement.
+
+Débits de la RTX 4060 Ti, à remplir après :
+
+```bash
+python scripts/benchmark_speed.py --models mobilenet_v3_small mobilenet_v3_large efficientnet_b0 efficientnet_b1 efficientnet_b3 resnet18 efficientnet_b4 resnet50 convnext_tiny swin_t maxvit_t efficientnet_v2_s --batch-size 32 --batches 8
+```
+
+Le CSV est écrit dans `outputs/benchmark_speed.csv`. Le script mesure la
+précision classique, pas `--amp`, et n'a pas besoin des poids pré-entraînés.
 
 | Backbone | Forward | Entraînement | Cache 70 k | 1 époque (52 k) |
 | --- | --- | --- | --- | --- |
-| mobilenet_v3_small | 271 img/s | 71 img/s | 4 min | 12 min |
-| mobilenet_v3_large | 78 img/s | 23 img/s | 15 min | 38 min |
-| resnet18 | 50 img/s | 17 img/s | 23 min | **50 min** |
-| resnet50 | 17 img/s | 5,6 img/s | 68 min | **2 h 34** |
+| mobilenet_v3_small | | | | |
+| mobilenet_v3_large | | | | |
+| efficientnet_b0 | | | | |
+| efficientnet_b1 | | | | |
+| efficientnet_b3 | | | | |
+| resnet18 | | | | |
+| efficientnet_b4 | | | | |
+| resnet50 | | | | |
+| convnext_tiny | | | | |
+| swin_t | | | | |
+| maxvit_t | | | | |
+| efficientnet_v2_s | | | | |
 
-Un fine-tuning ResNet18 de 10 époques coûterait 8 heures ici. Décision :
-**extraction de features mise en cache** pour toute l'étude comparative (un seul
-passage forward, puis quelques secondes par expérience), et **fine-tuning
-réservé au GPU Colab** avec exactement le même code. Justification complète dans
+L'étude comparative des têtes reste sur des features mises en cache : un seul
+passage forward, puis quelques secondes par expérience. Le fine-tuning
+complet, plus performant, se fait sur cette machine. Justification dans
 [`docs/04-programme-entrainement.md`](docs/04-programme-entrainement.md).
 
-Temps réel de l'extraction :
+Temps réel de l'extraction sur l'ancienne machine (Intel i5, sans GPU) :
 
 - MobileNetV3-Large : **15 min 40 s** train (69,2 img/s) + 1 min 10 s test, cache 179 Mo.
 - ResNet18 : **32 min 33 s** train (33,3 img/s) + 1 min 47 s test, cache 77 Mo.
 
-ResNet50 n'a pas été mis en cache en CPU (une époque de fine-tuning y coûterait
-2 h 34) : il sera entraîné directement sur GPU via
-[`notebooks/colab_finetune.ipynb`](notebooks/colab_finetune.ipynb).
+ResNet50 s'entraîne en local :
+
+```bash
+python scripts/train.py --model resnet50 --epochs 10 --loss asl --amp
+```
 
 ---
 
@@ -213,11 +235,13 @@ reporter chaque score dans ce tableau.
 
 ## Prochaines étapes, par ordre de rentabilité estimée
 
-1. **Fine-tuning sur GPU Colab** ([`notebooks/colab_finetune.ipynb`](notebooks/colab_finetune.ipynb)).
-   C'est le gain le plus important attendu : le backbone gelé plafonne à une mAP
-   de 0,65, et adapter les features à MS COCO devrait dépasser cela nettement.
-   Candidats : ResNet50 (poids `IMAGENET1K_V2`, 80,9 % top-1), ConvNeXt-Tiny,
-   Swin-T.
+1. **Mesurer les débits sur la RTX 4060 Ti**, puis **fine-tuner en local**
+   (`scripts/train.py --amp`). C'est le gain le plus important attendu : le
+   backbone gelé plafonne à une mAP de 0,65, et adapter les features à MS COCO
+   devrait dépasser cela nettement. Candidats : ResNet50 (poids
+   `IMAGENET1K_V2`, 80,9 % top-1), EfficientNet-B3/B4, ConvNeXt-Tiny, Swin-T,
+   MaxVit-T, EfficientNetV2-S. La commande de benchmark est dans la section
+   matérielle.
 2. **Régler les hyperparamètres d'ASL et de la focal loss** (γ⁻, clip, plafond de
    `pos_weight`), puisque leur sous-performance actuelle vient probablement de
    valeurs non ajustées.
@@ -233,6 +257,15 @@ reporter chaque score dans ce tableau.
 ---
 
 ## Journal
+
+### 6 octobre 2026
+
+- Changement de machine : NVIDIA RTX 4060 Ti, Intel i9-13900KF, 32 Go de RAM.
+  Les consignes d'installation passent à PyTorch CUDA 12.8 (`cu128`, repli
+  `cu124`). Le fine-tuning se lance en local avec `scripts/train.py --amp`.
+  Le notebook Colab est retiré.
+- Short-list de 12 backbones pour le benchmark de débit. Quatre entrent dans
+  le registre : EfficientNet-B1, EfficientNet-B3, EfficientNet-B4, MaxVit-T.
 
 ### 5 octobre 2026
 

@@ -34,10 +34,22 @@ classe**. Analyse détaillée dans
 ## Installation
 
 ```bash
-# torch et torchvision doivent venir du meme build (cpu ou cu12x)
-pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cpu
+# torch et torchvision doivent venir du meme build CUDA 12.
+# cu128 exige un pilote NVIDIA serie 570 ou plus recent.
+pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
+
+# Pilote plus ancien : meme commande avec
+# --index-url https://download.pytorch.org/whl/cu124
 ```
+
+Vérifier que la carte est visible :
+
+```bash
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+Attendu : une version `+cu128` (ou `+cu124`), `True`, et `NVIDIA GeForce RTX 4060 Ti`.
 
 Le dataset n'est pas dans le dépôt. Il est attendu dans `../ms-coco` par rapport
 à la racine du dépôt, ou à l'emplacement indiqué par `MSCOCO_ROOT` :
@@ -74,11 +86,21 @@ python3 scripts/predict.py --checkpoint outputs/head_mobilenet_v3_large_mlp_bce.
 Meilleur modèle actuel (CPU, backbone gelé) : **MobileNetV3-Large + MLP + BCE**,
 seuils par classe, F1 validation **0,6145**. Détail dans [`PROGRESS.md`](PROGRESS.md).
 
-Fine-tuning complet (à réserver au GPU, voir
-[`notebooks/colab_finetune.ipynb`](notebooks/colab_finetune.ipynb)) :
+Fine-tuning complet, en local, avec précision mixte (`--amp`). Les poids
+ImageNet (`Weights.DEFAULT`) sont téléchargés automatiquement au premier
+lancement.
 
 ```bash
-python3 scripts/train.py --model resnet50 --epochs 10 --loss asl --amp --tensorboard
+python3 scripts/train.py --model resnet18 --epochs 10 --loss bce \
+    --batch-size 128 --lr 1e-4 --amp --num-workers 2 --tensorboard
+python3 scripts/train.py --model resnet18 --epochs 10 --loss asl \
+    --batch-size 128 --lr 1e-4 --amp --num-workers 2
+python3 scripts/train.py --model resnet50 --epochs 10 --loss asl \
+    --batch-size 96 --lr 1e-4 --amp --num-workers 2
+python3 scripts/train.py --model convnext_tiny --epochs 10 --loss asl \
+    --batch-size 64 --lr 5e-5 --amp --num-workers 2
+python3 scripts/train.py --model swin_t --epochs 10 --loss asl \
+    --batch-size 64 --lr 5e-5 --amp --num-workers 2
 ```
 
 ---
@@ -108,7 +130,7 @@ scripts/               programmes exécutables
 └── predict.py         JSON de soumission (partie 5 du sujet)
 
 docs/                  explication des parties 3, 4, 5 du sujet
-notebooks/             analyse des résultats, fine-tuning Colab
+notebooks/             analyse des résultats
 tests/                 parité de la métrique avec le code du sujet
 outputs/               résultats, checkpoints, figures (hors git)
 features/              caches de features (hors git)
