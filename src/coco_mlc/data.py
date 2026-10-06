@@ -1,4 +1,4 @@
-"""Datasets, transformations et decoupage train/validation.
+"""Datasets, transformations et decoupage train/validation/test.
 
 Le layout reel du dataset fourni est :
 
@@ -68,6 +68,12 @@ def build_transforms(
       - ``"pad"``    : padding en carre puis redimensionnement (aucune perte) ;
       - ``"squash"`` : redimensionnement direct en (S, S), deforme le ratio ;
       - ``"crop"``   : redimensionnement du petit cote puis recadrage central.
+
+    ``augment`` (uniquement si ``train=True``) :
+      - ``"none"``       : geometrie seule ;
+      - ``"flip"``       : retournement horizontal (baseline) ;
+      - ``"strong"``     : flip, jitter leger, affine leger ;
+      - ``"experiment"`` : flip, rotation / translation / echelle, jitter photometrique.
     """
     if resize_mode == "pad":
         geometry = [PadToSquare(), T.Resize((image_size, image_size))]
@@ -87,6 +93,12 @@ def build_transforms(
                 T.RandomHorizontalFlip(),
                 T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
                 T.RandomAffine(degrees=10, translate=(0.05, 0.05), scale=(0.9, 1.1)),
+            ]
+        elif augment == "experiment":
+            steps += [
+                T.RandomHorizontalFlip(),
+                T.RandomAffine(degrees=15, translate=(0.08, 0.08), scale=(0.85, 1.15)),
+                T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.05),
             ]
         elif augment != "none":
             raise ValueError(f"augment inconnu : {augment!r}")
@@ -371,3 +383,176 @@ def get_split(
         )
     )
     return train_idx, val_idx
+
+
+def _fraction_token(value: float) -> str:
+    """``0.15`` -> ``"0.15"``, ``0.7`` -> ``"0.7"`` (stable malgre le binaire)."""
+    return f"{value:.4f}".rstrip("0").rstrip(".")
+
+
+def iterative_stratified_split_three(
+    Y: np.ndarray,
+    val_fraction: float,
+    test_fraction: float,
+    seed: int,
+):
+    """Stratification iterative en trois ensembles : train, validation, test.
+
+    Meme algorithme que ``iterative_stratified_split`` (Sechidis et al., 2011),
+    avec trois quotas. Le test local est un sous-ensemble des images annotees :
+    le test officiel du challenge n'a pas d'etiquettes. ``get_split`` (80/20)
+    n'est pas utilise et son cache n'est pas touche.
+    """
+    if val_fraction <= 0 or test_fraction <= 0:
+        raise ValueError("val_fraction et test_fraction doivent etre strictement positifs")
+    train_fraction = 1.0 - float(val_fraction) - float(test_fraction)
+    if train_fraction <= 1e-9:
+        raise ValueError(
+            f"la fraction train est nulle ou negative "
+            f"(val={val_fraction}, test={test_fraction})"
+        )
+
+    Y = np.asarray(Y, dtype=np.int64)
+    n, _ = Y.shape
+    rng = np.random.default_rng(seed)
+    fractions = np.array([train_fraction, val_fraction, test_fraction], dtype=float)
+    fractions = fractions / fractions.sum()
+
+    desired = np.outer(fractions, Y.sum(axis=0)).astype(float)  # (3, C)
+    desired_total = fractions * n
+    assignment = np.full(n, -1, dtype=np.int8)
+    remaining = np.ones(n, dtype=bool)
+
+    while True:
+        rem_counts = Y[remaining].sum(axis=0)
+        positive = rem_counts > 0
+        if not positive.any():
+            break
+        cls = int(np.flatnonzero(positive)[np.argmin(rem_counts[positive])])
+        idxs = np.flatnonzero(remaining & (Y[:, cls] == 1))
+        rng.shuffle(idxs)
+        for i in idxs:
+            col = desired[:, cls]
+            cand = np.flatnonzero(col == col.max())
+            if cand.size > 1:
+                totals = desired_total[cand]
+                cand = cand[totals == totals.max()]
+            s = int(cand[0]) if cand.size == 1 else int(rng.choice(cand))
+            assignment[i] = s
+            remaining[i] = False
+            desired[s] -= Y[i]
+            desired_total[s] -= 1
+
+    leftovers = np.flatnonzero(remaining)
+    if leftovers.size:
+        rng.shuffle(leftovers)
+        n_val = int(round(leftovers.size * float(val_fraction)))
+        n_test = int(round(leftovers.size * float(test_fraction)))
+        if n_val + n_test > leftovers.size:
+            n_test = leftovers.size - n_val
+        assignment[leftovers[:n_val]] = 1
+        assignment[leftovers[n_val:n_val + n_test]] = 2
+        assignment[leftovers[n_val + n_test:]] = 0
+
+    if np.any(assignment < 0):
+        raise RuntimeError("decoupage incomplet : certains indices n'ont pas ete assignes")
+
+    train_idx = np.flatnonzero(assignment == 0).tolist()
+    val_idx = np.flatnonzero(assignment == 1).tolist()
+    test_idx = np.flatnonzero(assignment == 2).tolist()
+    return train_idx, val_idx, test_idx
+
+
+def random_split_three(n: int, val_fraction: float, test_fraction: float, seed: int):
+    """Tirage aleatoire en trois ensembles disjoints."""
+    train_fraction = 1.0 - float(val_fraction) - float(test_fraction)
+    if min(train_fraction, val_fraction, test_fraction) <= 0:
+        raise ValueError("les trois fractions doivent etre strictement positives")
+    g = torch.Generator().manual_seed(seed)
+    perm = torch.randperm(n, generator=g).tolist()
+    n_val = max(1, int(round(n * val_fraction)))
+    n_test = max(1, int(round(n * test_fraction)))
+    if n_val + n_test >= n:
+        raise ValueError("train trop petit pour ces fractions")
+    val_idx = perm[:n_val]
+    test_idx = perm[n_val:n_val + n_test]
+    train_idx = perm[n_val + n_test:]
+    return train_idx, val_idx, test_idx
+
+
+def get_three_way_split(
+    Y: np.ndarray,
+    val_fraction: float = 0.15,
+    test_fraction: float = 0.15,
+    seed: int = 42,
+    strategy: str = "stratified",
+    cache_path: str | Path | None = None,
+):
+    """Decoupage reproductible train / validation / test, cache a part de ``get_split``.
+
+    Le fichier par defaut est
+    ``outputs/split_three_stratified_0.7_0.15_0.15_42.json`` pour le jeu complet.
+    Un appel avec un autre ``n`` (essai ``MAX_IMAGES``) n'ecrase pas ce cache :
+    il ecrit un fichier suffixe par la taille.
+    """
+    train_fraction = 1.0 - float(val_fraction) - float(test_fraction)
+    if cache_path is None:
+        cache_path = PATHS.outputs / (
+            f"split_three_{strategy}_{_fraction_token(train_fraction)}_"
+            f"{_fraction_token(val_fraction)}_{_fraction_token(test_fraction)}_{seed}.json"
+        )
+    cache_path = Path(cache_path)
+
+    def _read(path: Path):
+        if not path.exists():
+            return None
+        payload = json.loads(path.read_text())
+        if (
+            payload.get("n") == len(Y)
+            and payload.get("seed") == seed
+            and payload.get("strategy") == strategy
+            and abs(float(payload.get("val_fraction", -1)) - float(val_fraction)) < 1e-9
+            and abs(float(payload.get("test_fraction", -1)) - float(test_fraction)) < 1e-9
+        ):
+            return payload["train"], payload["val"], payload["test"]
+        return None
+
+    found = _read(cache_path)
+    if found is not None:
+        return found
+
+    write_path = cache_path
+    if cache_path.exists():
+        write_path = cache_path.with_name(f"{cache_path.stem}_{len(Y)}{cache_path.suffix}")
+        found = _read(write_path)
+        if found is not None:
+            return found
+
+    if strategy == "stratified":
+        train_idx, val_idx, test_idx = iterative_stratified_split_three(
+            Y, val_fraction, test_fraction, seed
+        )
+    elif strategy == "random":
+        train_idx, val_idx, test_idx = random_split_three(
+            len(Y), val_fraction, test_fraction, seed
+        )
+    else:
+        raise ValueError(f"strategy inconnue : {strategy!r}")
+
+    write_path.parent.mkdir(parents=True, exist_ok=True)
+    write_path.write_text(
+        json.dumps(
+            {
+                "n": len(Y),
+                "strategy": strategy,
+                "train_fraction": train_fraction,
+                "val_fraction": val_fraction,
+                "test_fraction": test_fraction,
+                "seed": seed,
+                "train": train_idx,
+                "val": val_idx,
+                "test": test_idx,
+            }
+        )
+    )
+    return train_idx, val_idx, test_idx

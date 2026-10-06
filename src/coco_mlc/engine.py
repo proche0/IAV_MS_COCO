@@ -29,6 +29,18 @@ def _unpack(batch):
     return batch[0], batch[1]
 
 
+def frozen_modules_eval(net) -> None:
+    """Passe en eval les modules dont aucun parametre direct n'est entrainable.
+
+    ``net.train()`` remettrait sinon les BatchNorm geles en mode train, et leurs
+    statistiques courantes bougeraient alors que les poids sont figes.
+    """
+    for module in net.modules():
+        params = list(module.parameters(recurse=False))
+        if params and all(not p.requires_grad for p in params):
+            module.eval()
+
+
 def train_one_epoch(
     loader,
     net,
@@ -40,6 +52,7 @@ def train_one_epoch(
     progress: bool = True,
     desc: str = "train",
     scaler=None,
+    frozen_eval: bool = False,
 ):
     """Une epoque d'entrainement. Retourne la perte moyenne et l'historique.
 
@@ -48,6 +61,8 @@ def train_one_epoch(
     ``scaler`` active la precision mixte (utile seulement sur GPU).
     """
     net.train()
+    if frozen_eval:
+        frozen_modules_eval(net)
     total_loss = 0.0
     seen = 0
     running = 0.0
@@ -85,6 +100,70 @@ def train_one_epoch(
             iterator.set_postfix(loss=f"{total_loss / max(seen, 1):.4f}")
 
     return total_loss / max(seen, 1), mbatch_losses
+
+
+def fit_stage(
+    net,
+    train_loader,
+    train_eval_loader,
+    val_loader,
+    criterion,
+    optimizer,
+    device,
+    epochs: int,
+    scheduler=None,
+    amp: bool = False,
+    desc: str = "train",
+) -> list[dict]:
+    """Plusieurs epoques avec erreur train et validation au seuil 0,5.
+
+    L'evaluation train utilise ``train_eval_loader`` (sans augmentation), pour
+    que l'ecart train/validation mesure la generalisation et non le bruit des
+    transformations aleatoires. Le F1 est celui du serveur. L'erreur en
+    pourcentage vaut ``100 * (1 - F1)``.
+    """
+    use_amp = bool(amp and getattr(device, "type", device) == "cuda")
+    scaler = torch.amp.GradScaler(device.type) if use_amp else None
+    history: list[dict] = []
+
+    for epoch in range(1, epochs + 1):
+        train_loss, _ = train_one_epoch(
+            train_loader, net, criterion, optimizer, device,
+            scheduler=scheduler, scaler=scaler, frozen_eval=True,
+            desc=f"{desc} {epoch}/{epochs}",
+        )
+        val_results = evaluate(
+            val_loader, net, criterion, device, thresholds=0.5,
+            desc="validation", amp=use_amp,
+        )
+        train_results = evaluate(
+            train_eval_loader, net, criterion, device, thresholds=0.5,
+            desc="train (eval)", amp=use_amp,
+        )
+        row = {
+            "epoch": epoch,
+            "train_loss": train_loss,
+            "val_loss": val_results["loss"],
+            "train_f1": train_results["f1"],
+            "val_f1": val_results["f1"],
+            "train_precision": train_results["precision"],
+            "val_precision": val_results["precision"],
+            "train_recall": train_results["recall"],
+            "val_recall": val_results["recall"],
+            "train_error": 100.0 * (1.0 - train_results["f1"]),
+            "val_error": 100.0 * (1.0 - val_results["f1"]),
+        }
+        history.append(row)
+        print(
+            f"  epoque {epoch:2d}/{epochs}  "
+            f"train_loss={train_loss:.4f}  val_loss={val_results['loss']:.4f}  "
+            f"P/R/F1 train={train_results['precision']:.3f}/"
+            f"{train_results['recall']:.3f}/{train_results['f1']:.3f}  "
+            f"val={val_results['precision']:.3f}/"
+            f"{val_results['recall']:.3f}/{val_results['f1']:.3f}  "
+            f"erreur train={row['train_error']:.2f}%  val={row['val_error']:.2f}%"
+        )
+    return history
 
 
 @torch.no_grad()

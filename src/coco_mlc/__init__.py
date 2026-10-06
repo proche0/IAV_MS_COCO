@@ -8,6 +8,7 @@ Modules :
   metrics    metrique du serveur reproduite, macro/micro F1, mAP
   engine     boucles d'entrainement et d'evaluation, checkpoints, Tensorboard
   thresholds calibration des seuils de decision
+  diagnostics courbes d'erreur, schema du modele, diagnostic biais/variance
 """
 
 from .config import CLASSES, DEFAULTS, NUM_CLASSES, PATHS, SEED

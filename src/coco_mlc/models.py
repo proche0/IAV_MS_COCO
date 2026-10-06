@@ -241,6 +241,37 @@ def build_head(kind: str, in_features: int, num_classes: int = NUM_CLASSES, **kw
     raise ValueError(f"tete inconnue : {kind!r} (disponibles : linear, mlp)")
 
 
+def classifier_in_features(model: nn.Module) -> int:
+    """Dimension du vecteur qui alimente la tete de classification."""
+    return _last_linear(model)[1].in_features
+
+
+def load_compatible_weights(model: nn.Module, source: nn.Module) -> list[str]:
+    """Copie les tenseurs de ``source`` vers ``model`` quand le nom ou la forme coincide.
+
+    Une tete ``Linear`` et la meme tete enveloppee dans ``Sequential(Dropout, Linear)``
+    n'ont pas les memes cles (``fc.weight`` contre ``fc.1.weight``). La seconde
+    forme est retrouvee en retirant l'indice ``.1`` du dropout.
+    """
+    src = source.state_dict()
+    dst = model.state_dict()
+    mapped: dict[str, torch.Tensor] = {}
+    copied: list[str] = []
+    for key, tensor in dst.items():
+        candidates = [key]
+        if key.endswith(".1.weight"):
+            candidates.append(key[: -len(".1.weight")] + ".weight")
+        elif key.endswith(".1.bias"):
+            candidates.append(key[: -len(".1.bias")] + ".bias")
+        for cand in candidates:
+            if cand in src and tuple(src[cand].shape) == tuple(tensor.shape):
+                mapped[key] = src[cand]
+                copied.append(key)
+                break
+    model.load_state_dict({**dst, **mapped}, strict=False)
+    return copied
+
+
 def count_parameters(model: nn.Module) -> tuple[int, int]:
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
