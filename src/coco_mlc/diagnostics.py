@@ -160,7 +160,8 @@ def diagnose_errors(
     Les erreurs sont des pourcentages ``100 * (1 - F1)``. Le cas train/validation
     est choisi parmi sous-apprentissage, surapprentissage, les deux, idéal, ou
     intermédiaire. Un test nettement pire que la validation ajoute un avertissement,
-    sans remplacer ce cas.
+    sans remplacer ce cas. Le dictionnaire est renvoyé sans affichage : le notebook
+    l'écrit en JSON et n'imprime que le texte via ``format_diagnosis``.
     """
     train_error = float(train_error)
     val_error = float(val_error)
@@ -205,7 +206,7 @@ def diagnose_errors(
         if poor_test:
             actions = actions + [TEST_ACTION]
 
-    result = {
+    return {
         "regime": regime,
         "title": title,
         "train_error": train_error,
@@ -216,28 +217,88 @@ def diagnose_errors(
         "poor_test_generalization": poor_test,
         "actions": actions,
     }
-    print(format_diagnosis(result))
-    return result
 
 
-def format_diagnosis(result: dict) -> str:
-    """Texte du diagnostic, prêt à afficher dans le notebook."""
-    lines = [
-        f"Diagnostic : {result['title']}",
-        (
-            f"Erreur entraînement {result['train_error']:.2f} % | "
-            f"validation {result['val_error']:.2f} % | "
-            f"écart {result['gap']:+.2f} pts"
-        ),
-    ]
+def _f1(error: float) -> float:
+    return 1.0 - float(error) / 100.0
+
+
+def _reading(result: dict) -> str:
+    regime = result["regime"]
+    if regime == "underfit":
+        text = "Erreurs hautes et proches : le modèle n'a pas encore assez appris."
+    elif regime == "overfit":
+        text = "L'entraînement est bas et la validation décroche : le modèle retient le train."
+    elif regime == "both":
+        text = (
+            "Erreurs hautes, et un écart net : apprentissage incomplet "
+            "et généralisation faible."
+        )
+    elif regime == "ideal":
+        text = "Erreurs basses et proches."
+    else:
+        text = "Ni le niveau ni l'écart ne correspondent à un des quatre exemples types."
+    if result.get("poor_test_generalization"):
+        text += " Le test local est nettement pire que la validation."
+    return text
+
+
+def format_diagnosis(result: dict, heading: str | None = None) -> str:
+    """Résumé lisible d'un diagnostic, sans la liste d'actions."""
+    lines = []
+    if heading:
+        lines.append(heading)
+    lines.append(result["title"])
+
+    f1 = f"F1 train {_f1(result['train_error']):.3f} | validation {_f1(result['val_error']):.3f}"
+    if result.get("test_error") is not None:
+        f1 += f" | test {_f1(result['test_error']):.3f}"
+    lines.append(f1)
+    lines.append(
+        f"Erreur train {result['train_error']:.1f} % | "
+        f"validation {result['val_error']:.1f} % | "
+        f"écart {result['gap']:+.1f} pts"
+    )
     if result.get("test_error") is not None:
         lines.append(
-            f"Erreur test {result['test_error']:.2f} % | "
-            f"écart test-validation {result['test_gap']:+.2f} pts"
+            f"Test {result['test_error']:.1f} % | "
+            f"écart avec la validation {result['test_gap']:+.1f} pts"
         )
-    lines.append("Actions :")
-    lines.extend(f"- {action}" for action in result["actions"])
+    lines.append(_reading(result))
     return "\n".join(lines)
+
+
+def format_actions(result: dict) -> str:
+    """Pistes regroupées, une seule fois pour le point de fonctionnement."""
+    lines = ["Suite proposée"]
+    regime = result["regime"]
+    if regime == "both":
+        lines.append("Apprentissage")
+        lines.extend(f"- {item}" for item in UNDERFIT_ACTIONS)
+        lines.append("Généralisation")
+        lines.extend(f"- {item}" for item in OVERFIT_ACTIONS)
+    elif regime == "ideal":
+        lines.append("- Le protocole peut être conservé.")
+    elif regime == "intermediate":
+        lines.append("- Comparer le niveau des erreurs et l'écart avant de changer de modèle.")
+    else:
+        kept = [item for item in result["actions"] if item != TEST_ACTION]
+        lines.extend(f"- {item}" for item in kept)
+    if result.get("poor_test_generalization"):
+        lines.append("Test")
+        lines.append(
+            "- Élargir et diversifier la validation. "
+            "Ne pas régler les hyperparamètres sur ce test."
+        )
+    return "\n".join(lines)
+
+
+def format_report(sections: list[tuple[str, dict]]) -> str:
+    """Trois étapes en résumé, puis les pistes du dernier cas seulement."""
+    blocks = [format_diagnosis(result, heading=heading) for heading, result in sections]
+    if sections:
+        blocks.append(format_actions(sections[-1][1]))
+    return "\n\n".join(blocks)
 
 
 def _unique(items: list[str]) -> list[str]:

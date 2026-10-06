@@ -113,20 +113,30 @@ SETUP_CODE = """
 import sys
 from pathlib import Path
 
+def _find_repo() -> Path:
+    here = Path.cwd().resolve()
+    for candidate in [here, *here.parents]:
+        if (candidate / "src" / "coco_mlc").is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "Racine du projet introuvable (dossier src/coco_mlc). "
+        "Lance le notebook depuis le depot IAV_MS_COCO."
+    )
+
+REPO = _find_repo()
+for _site in (REPO / ".venv").glob("Lib/site-packages"):
+    if _site.is_dir() and str(_site) not in sys.path:
+        sys.path.insert(0, str(_site))
+for _site in (REPO / ".venv").glob("lib/python*/site-packages"):
+    if _site.is_dir() and str(_site) not in sys.path:
+        sys.path.insert(0, str(_site))
+sys.path.insert(0, str(REPO / "src"))
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from torchinfo import summary
-
-cwd = Path.cwd().resolve()
-if cwd.name == "experiments" and cwd.parent.name == "notebooks":
-    REPO = cwd.parent.parent
-elif cwd.name == "notebooks":
-    REPO = cwd.parent
-else:
-    REPO = cwd
-sys.path.insert(0, str(REPO / "src"))
 
 from coco_mlc.config import CLASSES, PATHS
 from coco_mlc.data import (
@@ -141,6 +151,7 @@ from coco_mlc.data import (
 from coco_mlc.diagnostics import (
     diagnose_errors,
     error_percent,
+    format_report,
     plot_error_curves,
     plot_model_diagram,
     save_history,
@@ -321,7 +332,6 @@ print(
     f"rappel {last_baseline['train_recall']:.3f}/{last_baseline['val_recall']:.3f} | "
     f"F1 {last_baseline['train_f1']:.3f}/{last_baseline['val_f1']:.3f}"
 )
-diagnose_errors(last_baseline["train_error"], last_baseline["val_error"])
 """
 
 FINETUNE_CODE = """
@@ -384,7 +394,6 @@ print(
     f"rappel {last_ft['train_recall']:.3f}/{last_ft['val_recall']:.3f} | "
     f"F1 {last_ft['train_f1']:.3f}/{last_ft['val_f1']:.3f}"
 )
-diagnose_errors(last_ft["train_error"], last_ft["val_error"])
 """
 
 TEST_CODE = """
@@ -433,20 +442,123 @@ print("Test local calibré  :", format_metrics(test_cal))
 report.to_csv(OUT_DIR / "generalization.csv")
 """
 
+SUBMIT_CODE = """
+import json
+import re
+
+import torch
+from coco_mlc.data import COCOTestImageDataset
+from coco_mlc.thresholds import apply_thresholds
+
+server_set = COCOTestImageDataset(transform=eval_tf)
+server_loader = DataLoader(
+    server_set,
+    batch_size=BATCH_SIZE,
+    shuffle=False,
+    num_workers=NUM_WORKERS,
+    pin_memory=device.type == "cuda",
+)
+
+chunks = []
+model_ft.eval()
+with torch.inference_mode():
+    for images, _stems in server_loader:
+        images = images.to(device, non_blocking=True)
+        with torch.autocast(device_type=device.type, enabled=USE_AMP):
+            logits = model_ft(images)
+        chunks.append(torch.sigmoid(logits.float()).cpu())
+server_scores = torch.cat(chunks)
+decisions = apply_thresholds(server_scores, thresholds, min_labels=1)
+
+predictions = {
+    str(image_id): [int(c) for c in torch.nonzero(row, as_tuple=False).flatten().tolist()]
+    for image_id, row in zip(server_set.ids, decisions)
+}
+
+problems = []
+if len(predictions) != len(server_set):
+    problems.append(f"{len(predictions)} entrées au lieu de {len(server_set)}")
+bad_ids = [key for key in predictions if re.fullmatch(r"\\d{12}", key) is None]
+if bad_ids:
+    problems.append(f"identifiants non conformes (ex. {bad_ids[:3]})")
+empty = [key for key, labels in predictions.items() if not labels]
+if empty:
+    problems.append(f"{len(empty)} listes vides")
+bad_values = [
+    key for key, labels in predictions.items()
+    if not all(isinstance(c, int) and 0 <= c < len(CLASSES) for c in labels)
+]
+if bad_values:
+    problems.append(f"indices hors de [0, {len(CLASSES) - 1}]")
+if problems:
+    raise RuntimeError("Soumission non conforme : " + " ; ".join(problems))
+
+PATHS.submissions.mkdir(parents=True, exist_ok=True)
+submission_path = PATHS.submissions / f"exp_{MODEL_NAME}.json"
+submission_path.write_text(json.dumps(predictions, indent=2), encoding="utf-8")
+mean_labels = sum(len(labels) for labels in predictions.values()) / len(predictions)
+print(f"Soumission : {submission_path}")
+print(f"{len(predictions)} images | {mean_labels:.2f} classes par image en moyenne")
+"""
+
 DIAG_CODE = """
-print("Courbes, seuil 0,5, dernière époque de fine-tuning")
-diagnose_errors(
-    last_ft["train_error"],
-    last_ft["val_error"],
-    test_error=error_percent(test_05["f1"]),
+import importlib
+import json
+
+import coco_mlc.diagnostics as _diagnostics
+
+importlib.reload(_diagnostics)
+diagnose_errors = _diagnostics.diagnose_errors
+format_report = _diagnostics.format_report
+
+def _last_epoch(row):
+    return {
+        "precision_train": row["train_precision"],
+        "precision_val": row["val_precision"],
+        "recall_train": row["train_recall"],
+        "recall_val": row["val_recall"],
+        "f1_train": row["train_f1"],
+        "f1_val": row["val_f1"],
+    }
+
+diagnosis = {
+    "notebook": f"exp_{MODEL_NAME}.ipynb",
+    "model": MODEL_NAME,
+    "baseline_threshold_0_5": {
+        "last_epoch": _last_epoch(last_baseline),
+        "diagnosis": diagnose_errors(
+            last_baseline["train_error"],
+            last_baseline["val_error"],
+        ),
+    },
+    "finetune_threshold_0_5": {
+        "last_epoch": _last_epoch(last_ft),
+        "diagnosis": diagnose_errors(
+            last_ft["train_error"],
+            last_ft["val_error"],
+            test_error=error_percent(test_05["f1"]),
+        ),
+    },
+    "calibrated": {
+        "diagnosis": diagnose_errors(
+            error_percent(train_cal["f1"]),
+            error_percent(val_cal["f1"]),
+            test_error=error_percent(test_cal["f1"]),
+        ),
+    },
+}
+diagnosis_path = OUT_DIR / "diagnosis.json"
+diagnosis_path.write_text(
+    json.dumps(diagnosis, indent=2, ensure_ascii=False),
+    encoding="utf-8",
 )
+print(format_report([
+    ("Baseline, seuil 0,5", diagnosis["baseline_threshold_0_5"]["diagnosis"]),
+    ("Fine-tuning, seuil 0,5", diagnosis["finetune_threshold_0_5"]["diagnosis"]),
+    ("Seuils calibrés", diagnosis["calibrated"]["diagnosis"]),
+]))
 print()
-print("Point de fonctionnement : seuils calibrés sur la validation seulement")
-diagnose_errors(
-    error_percent(train_cal["f1"]),
-    error_percent(val_cal["f1"]),
-    test_error=error_percent(test_cal["f1"]),
-)
+print("Enregistré :", diagnosis_path)
 """
 
 
@@ -481,6 +593,7 @@ la sigmoïde n'est appliquée qu'au moment des métriques.
 4. Étape optimisée : augmentation plus forte, dropout, weight decay, dégel
 5. Test local, une seule fois
 6. Diagnostic biais / variance
+7. Soumission au leaderboard, sur les images de test sans étiquette
 """
 
 
@@ -562,6 +675,16 @@ les commenter un par un :
 Les poids de la baseline sont repris, y compris la tête déjà adaptée aux
 80 classes. Le test local n'entre toujours pas dans les décisions.
 """,
+    "submit": """## Soumission — leaderboard
+
+Le test local a des étiquettes : il mesure la généralisation, il ne part pas
+au serveur. Cette cellule applique le réseau fine-tuné aux images de
+`images/test`, avec les seuils calibrés sur la validation seulement.
+
+Le JSON suit le format du leaderboard : une clé par image (12 chiffres, sans
+extension), une liste d'indices de classes. Il est écrit dans
+`submissions/exp_<architecture>.json`.
+""",
     "test": """## Généralisation — test local, une seule fois
 
 Les seuils par classe sont calibrés **uniquement** sur la validation, puis
@@ -587,9 +710,9 @@ la validation. Le test n'intervient qu'ensuite.
   validation a été surajustée. Ne pas retoucher les hyperparamètres sur ce test.
 
 Un écart qui ne tombe dans aucun de ces régimes est signalé comme cas
-intermédiaire. Le premier diagnostic reprend la dernière époque des courbes
-(seuil 0,5). Le second reprend le point de fonctionnement après calibration
-des seuils sur la validation.
+intermédiaire. L'affichage résume les trois étapes, puis les pistes du dernier
+cas seulement. Le détail est enregistré dans
+`outputs/notebooks/<architecture>/diagnosis.json`.
 """,
 }
 
@@ -618,6 +741,8 @@ def build_notebook(name: str) -> dict:
         _cell("code", TEST_CODE),
         _cell("markdown", SHARED_MARKDOWN["guide"]),
         _cell("code", DIAG_CODE),
+        _cell("markdown", SHARED_MARKDOWN["submit"]),
+        _cell("code", SUBMIT_CODE),
     ]
     return {
         "nbformat": 4,

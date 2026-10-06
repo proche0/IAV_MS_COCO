@@ -26,7 +26,7 @@ from coco_mlc.data import (
     get_three_way_split,
     iterative_stratified_split_three,
 )
-from coco_mlc.diagnostics import diagnose_errors, plot_error_curves, plot_model_diagram
+from coco_mlc.diagnostics import diagnose_errors, format_report, plot_error_curves, plot_model_diagram
 from coco_mlc.models import load_compatible_weights
 
 
@@ -114,6 +114,11 @@ def test_diagnosis_matches_the_four_regimes():
     assert any("augmentation" in action for action in over["actions"])
     assert any("régularisation" in action for action in both["actions"])
     assert any("réseau plus volumineux" in action for action in both["actions"])
+
+    report = format_report([("Baseline", under), ("Calibré", leaked)])
+    assert report.count("Suite proposée") == 1
+    assert "Baseline" in report
+    assert "hyperparamètres" in report
 
 
 def test_dropout_head_receives_the_linear_weights():
