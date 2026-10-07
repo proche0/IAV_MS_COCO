@@ -1,0 +1,77 @@
+{
+  "notebook": "exp_convnext_tiny.ipynb",
+  "model": "convnext_tiny",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.32976311445236206,
+      "precision_val": 0.2935858368873596,
+      "recall_train": 0.8601052761077881,
+      "recall_val": 0.724810779094696,
+      "f1_train": 0.4767434732385638,
+      "f1_val": 0.4179004050603502
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Sous-apprentissage et surapprentissage simultanés",
+      "train_error": 52.32565267614362,
+      "val_error": 58.20995949396498,
+      "test_error": null,
+      "gap": 5.884306817821361,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Agrandir et diversifier le jeu d'entraînement.",
+        "Intensifier l'augmentation de données.",
+        "Ajouter de la régularisation (norme L2, dropout)."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.415865421295166,
+      "precision_val": 0.3629826009273529,
+      "recall_train": 0.9381453394889832,
+      "recall_val": 0.7831084728240967,
+      "f1_train": 0.5762763755536761,
+      "f1_val": 0.4960421676499046
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Sous-apprentissage et surapprentissage simultanés",
+      "train_error": 42.372362444632394,
+      "val_error": 50.39578323500954,
+      "test_error": 49.409166968272075,
+      "gap": 8.023420790377145,
+      "test_gap": -0.9866162667374638,
+      "poor_test_generalization": false,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Agrandir et diversifier le jeu d'entraînement.",
+        "Intensifier l'augmentation de données.",
+        "Ajouter de la régularisation (norme L2, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "intermediate",
+      "title": "Cas intermédiaire",
+      "train_error": 26.03336477882333,
+      "val_error": 30.52859667406498,
+      "test_error": 32.50030688406391,
+      "gap": 4.495231895241648,
+      "test_gap": 1.9717102099989319,
+      "poor_test_generalization": false,
+      "actions": [
+        "Les erreurs ne correspondent à aucun des quatre régimes types. Lire le niveau absolu et l'écart avant de changer de modèle."
+      ]
+    }
+  }
+}
