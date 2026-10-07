@@ -1,0 +1,77 @@
+{
+  "notebook": "exp_maxvit_t.ipynb",
+  "model": "maxvit_t",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.3536277413368225,
+      "precision_val": 0.3244192600250244,
+      "recall_train": 0.8547581434249878,
+      "recall_val": 0.7657222747802734,
+      "f1_train": 0.5002809044036709,
+      "f1_val": 0.45574825990509993
+    },
+    "diagnosis": {
+      "regime": "intermediate",
+      "title": "Cas intermédiaire",
+      "train_error": 49.97190955963291,
+      "val_error": 54.42517400949001,
+      "test_error": null,
+      "gap": 4.453264449857095,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Les erreurs ne correspondent à aucun des quatre régimes types. Lire le niveau absolu et l'écart avant de changer de modèle."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.4464440941810608,
+      "precision_val": 0.40499168634414673,
+      "recall_train": 0.9283258318901062,
+      "recall_val": 0.8316242098808289,
+      "f1_train": 0.6029308282986164,
+      "f1_val": 0.5447138310164207
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Sous-apprentissage et surapprentissage simultanés",
+      "train_error": 39.706917170138354,
+      "val_error": 45.52861689835793,
+      "test_error": 46.88733850962535,
+      "gap": 5.821699728219578,
+      "test_gap": 1.3587216112674199,
+      "poor_test_generalization": false,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Agrandir et diversifier le jeu d'entraînement.",
+        "Intensifier l'augmentation de données.",
+        "Ajouter de la régularisation (norme L2, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "both",
+      "title": "Sous-apprentissage et surapprentissage simultanés",
+      "train_error": 22.3775859866999,
+      "val_error": 28.18040260770075,
+      "test_error": 28.59125379245173,
+      "gap": 5.802816621000851,
+      "test_gap": 0.4108511847509817,
+      "poor_test_generalization": false,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Agrandir et diversifier le jeu d'entraînement.",
+        "Intensifier l'augmentation de données.",
+        "Ajouter de la régularisation (norme L2, dropout)."
+      ]
+    }
+  }
+}
