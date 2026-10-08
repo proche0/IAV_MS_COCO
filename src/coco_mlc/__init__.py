@@ -1,14 +1,14 @@
-"""Boite a outils du challenge MS COCO multi-label (80 classes).
+"""Toolbox for the MS COCO multi-label challenge (80 classes).
 
-Modules :
-  config     chemins, liste des classes, hyper-parametres par defaut
-  data       datasets, transformations, decoupage train/validation
-  models     fabrique de modeles torchvision et de tetes de classification
-  losses     BCE ponderee, focal loss, asymmetric loss
-  metrics    metrique du serveur reproduite, macro/micro F1, mAP
-  engine     boucles d'entrainement et d'evaluation, checkpoints, Tensorboard
-  thresholds calibration des seuils de decision
-  diagnostics courbes d'erreur, schema du modele, diagnostic biais/variance
+Modules:
+  config      paths, class list, default hyperparameters
+  data        datasets, transforms, train/validation split
+  models      torchvision model factory and classification heads
+  losses      weighted BCE, focal loss, asymmetric loss
+  metrics     server metric, macro/micro F1, mAP
+  engine      training and evaluation loops, checkpoints, TensorBoard
+  thresholds  decision-threshold calibration
+  diagnostics error curves, model diagram, bias/variance diagnosis
 """
 
 from .config import CLASSES, DEFAULTS, NUM_CLASSES, PATHS, SEED

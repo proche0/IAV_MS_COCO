@@ -1,4 +1,4 @@
-"""Reproductibilite et journalisation des experiences."""
+"""Reproducibility helpers and experiment logging."""
 
 from __future__ import annotations
 
@@ -45,10 +45,10 @@ def environment_summary() -> dict[str, str]:
 
 
 def log_experiment(csv_path: str | Path, row: dict) -> Path:
-    """Ajoute une ligne au registre des experiences.
+    """Append one row to the experiment log.
 
-    Le fichier est reecrit si de nouvelles colonnes apparaissent, afin de
-    pouvoir enrichir le suivi sans casser l'historique.
+    The file is rewritten when new columns appear, so the log can grow
+    without breaking older rows.
     """
     csv_path = Path(csv_path)
     csv_path.parent.mkdir(parents=True, exist_ok=True)

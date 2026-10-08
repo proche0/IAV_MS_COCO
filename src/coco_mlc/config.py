@@ -1,4 +1,4 @@
-"""Chemins, classes et hyper-parametres par defaut du challenge."""
+"""Paths, classes, and default hyperparameters for the challenge."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Les 80 classes, dans l'ordre impose par le sujet. L'indice dans ce tuple est
-# l'identifiant de classe ecrit dans les fichiers .cls et attendu par le
-# serveur d'evaluation.
+# The 80 classes, in the order required by the assignment. The index in this
+# tuple is the class id written in the .cls files and expected by the
+# evaluation server.
 # ---------------------------------------------------------------------------
 CLASSES: tuple[str, ...] = (
     "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
@@ -32,10 +32,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _default_data_root() -> Path:
-    """Racine du dataset fourni par le cours.
+    """Root of the dataset provided for the course.
 
-    Surchargeable par la variable d'environnement ``MSCOCO_ROOT``, ce qui
-    permet d'utiliser le meme code en local et sur Colab sans edition.
+    Override it with the ``MSCOCO_ROOT`` environment variable so the same code
+    works locally and on Colab without editing this file.
     """
     env = os.environ.get("MSCOCO_ROOT")
     if env:
@@ -68,9 +68,9 @@ class Paths:
             p = getattr(self, name)
             if not p.is_dir():
                 raise FileNotFoundError(
-                    f"Dossier introuvable : {p}\n"
-                    "Verifiez la racine du dataset (variable d'environnement MSCOCO_ROOT). "
-                    "Structure attendue : <racine>/images/train, <racine>/images/test, <racine>/labels/train"
+                    f"Folder not found: {p}\n"
+                    "Check the dataset root (MSCOCO_ROOT environment variable). "
+                    "Expected layout: <root>/images/train, <root>/images/test, <root>/labels/train"
                 )
 
     def mkdirs(self) -> None:
@@ -80,8 +80,7 @@ class Paths:
 
 PATHS = Paths()
 
-# Hyper-parametres de reference, surcharges par les arguments de ligne de
-# commande des scripts.
+# Reference hyperparameters. Notebooks can override them.
 DEFAULTS = {
     "image_size": 224,
     "resize_mode": "pad",

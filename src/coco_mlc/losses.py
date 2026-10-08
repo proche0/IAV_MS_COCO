@@ -1,4 +1,4 @@
-"""Fonctions de cout adaptees au multi-label fortement desequilibre."""
+"""Loss functions for a strongly imbalanced multi-label problem."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ import torch.nn.functional as F
 
 
 def compute_pos_weight(Y: np.ndarray, cap: float | None = 20.0) -> torch.Tensor:
-    """``pos_weight`` de ``BCEWithLogitsLoss`` : negatifs / positifs par classe.
+    """``pos_weight`` for ``BCEWithLogitsLoss``: negatives / positives per class.
 
-    Sans plafond, ``hair drier`` obtiendrait un poids de l'ordre de 640, ce qui
-    sature le gradient et rend l'entrainement instable. Le plafond est un
-    compromis a regler empiriquement.
+    Without a cap, ``hair drier`` would get a weight around 640, which blows up
+    the gradient and makes training unstable. The cap is a trade-off to tune
+    on the validation set.
     """
     Y = np.asarray(Y)
     pos = Y.sum(axis=0).astype(np.float64)
@@ -25,10 +25,10 @@ def compute_pos_weight(Y: np.ndarray, cap: float | None = 20.0) -> torch.Tensor:
 
 
 class FocalLoss(nn.Module):
-    """Focal loss sigmoidale (Lin et al., 2017), version multi-label.
+    """Sigmoid focal loss (Lin et al., 2017), multi-label version.
 
-    Reduit le poids des exemples deja bien classes, ce qui laisse le gradient
-    se concentrer sur les positifs rares.
+    Down-weights examples that are already well classified, so the gradient
+    focuses on the rare positive labels.
     """
 
     def __init__(self, gamma: float = 2.0, alpha: float = 0.25, reduction: str = "mean"):
@@ -53,12 +53,12 @@ class FocalLoss(nn.Module):
 
 
 class AsymmetricLoss(nn.Module):
-    """Asymmetric Loss (Ben-Baruch et al., 2020), reference sur MS COCO.
+    """Asymmetric loss (Ben-Baruch et al., 2020), a standard choice on MS COCO.
 
-    Deux mecanismes distincts : une focalisation plus forte sur les negatifs
-    (``gamma_neg > gamma_pos``) et un seuillage dur (``clip``) qui ignore
-    completement les negatifs deja tres bien classes. Avec en moyenne 2,9
-    classes positives sur 80, les negatifs ecrasent sinon le gradient.
+    Two separate mechanisms: stronger focusing on negatives
+    (``gamma_neg > gamma_pos``) and a hard clip (``clip``) that ignores
+    negatives that are already very well classified. With about 2.9 positive
+    classes out of 80, the negatives would otherwise dominate the gradient.
     """
 
     def __init__(
@@ -106,16 +106,16 @@ LOSS_NAMES = ("bce", "bce_pos_weight", "focal", "asl")
 
 
 def build_criterion(name: str, pos_weight: torch.Tensor | None = None, **kwargs) -> nn.Module:
-    """Fabrique la fonction de cout. Toutes attendent des logits en entree."""
+    """Build the loss. Every option expects logits as input."""
     name = name.lower()
     if name == "bce":
         return nn.BCEWithLogitsLoss()
     if name == "bce_pos_weight":
         if pos_weight is None:
-            raise ValueError("bce_pos_weight requiert pos_weight")
+            raise ValueError("bce_pos_weight requires pos_weight")
         return nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     if name == "focal":
         return FocalLoss(**kwargs)
     if name == "asl":
         return AsymmetricLoss(**kwargs)
-    raise ValueError(f"loss inconnue : {name!r} (disponibles : {LOSS_NAMES})")
+    raise ValueError(f"unknown loss: {name!r} (available: {LOSS_NAMES})")

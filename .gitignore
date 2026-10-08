@@ -1,4 +1,4 @@
-# Caches de features et poids : volumineux et regenerables
+# Feature caches and weights: large and easy to rebuild
 features/
 runs/
 *.pth
@@ -6,24 +6,24 @@ runs/
 *.npz
 *.npy
 
-# Journaux d'execution
+# Run logs
 outputs/logs/
 
-# Les indices de decoupage (65 000 entiers) sont regeneres a l'identique
-# par data.get_split : inutile de les versionner.
+# Split index files (65,000 integers) are rebuilt the same way
+# by data.get_split, so they do not need to be versioned.
 outputs/split_*.json
 
-# Les resultats d'experiences sont petits et constituent le rendu : on les garde.
+# Experiment results are small and are part of the work, so we keep them.
 !outputs/
 !outputs/*.csv
 !outputs/*.json
 !outputs/figures/
 !outputs/figures/*.png
 
-# Le dataset ne doit jamais etre commite
+# The dataset must never be committed
 ms-coco/
 
-# Environnements
+# Environments
 .venv/
 venv/
 env/
@@ -34,5 +34,5 @@ __pycache__/
 *.egg-info/
 .ipynb_checkpoints/
 
-# Divers
+# Misc
 .DS_Store

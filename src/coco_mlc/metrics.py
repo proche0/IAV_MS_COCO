@@ -1,15 +1,14 @@
-"""Metriques multi-label, dont la reproduction fidele du score du serveur.
+"""Multi-label metrics, including a faithful copy of the server score.
 
-Le serveur d'evaluation (et la fonction ``validation_loop`` fournie dans le
-sujet) ne calcule pas un macro-F1 classique : la precision et le rappel de
-chaque classe sont ponderes par l'inverse de la frequence de la classe dans
-l'ensemble evalue, puis le F1 est la moyenne harmonique des deux agregats.
+The evaluation server (and the ``validation_loop`` from the assignment) does
+not compute a classic macro-F1. Precision and recall of each class are weighted
+by the inverse of that class frequency on the evaluated set, then F1 is the
+harmonic mean of the two aggregates.
 
-Consequence chiffree sur les 65 000 images d'entrainement : ``hair drier``
-(102 positifs) pese 13,6 % du score et ``toaster`` (117) 11,9 %, alors que
-``person`` (35 494) ne pese que 0,04 %. Les dix classes les plus rares
-representent 43,8 % du score. Le rappel sur les classes rares est donc le
-levier principal, bien avant la performance globale.
+On the 65,000 training images this means: ``hair drier`` (102 positives) is
+13.6% of the score and ``toaster`` (117) is 11.9%, while ``person`` (35,494)
+is only 0.04%. The ten rarest classes are 43.8% of the score. Recall on rare
+classes is the main lever, well ahead of overall accuracy.
 """
 
 from __future__ import annotations
@@ -24,12 +23,12 @@ def _as_float_tensor(x) -> torch.Tensor:
 
 
 def metric_class_weights(totals: torch.Tensor) -> torch.Tensor:
-    """Poids ``1/frequence`` normalises, comme dans le sujet.
+    """Normalized ``1/frequency`` weights, as in the assignment.
 
-    Difference assumee avec le code fourni : une classe sans aucun positif dans
-    l'ensemble evalue y produirait un poids infini puis des ``nan`` sur toutes
-    les classes. On lui attribue ici un poids nul et on renormalise sur les
-    classes presentes.
+    Difference from the provided code: a class with no positive example in the
+    evaluated set would get an infinite weight, then ``nan`` on every class.
+    Here that class gets weight zero, and we renormalize over the classes
+    that are present.
     """
     totals = _as_float_tensor(totals)
     present = totals > 0
@@ -41,10 +40,10 @@ def metric_class_weights(totals: torch.Tensor) -> torch.Tensor:
 
 
 def harmonic_f1(precision, recall):
-    """Moyenne harmonique, avec 0 quand l'un des deux termes est nul.
+    """Harmonic mean. Returns 0 when either term is zero.
 
-    Le sujet ecrit ``2. / (1/prec + 1/recall)``, qui leve une division par zero
-    des qu'une des deux grandeurs vaut 0 (cas courant aux premieres epoques).
+    The assignment writes ``2. / (1/prec + 1/recall)``, which divides by zero
+    as soon as one of the two values is 0 (common in the first epochs).
     """
     precision = float(precision)
     recall = float(recall)
@@ -54,7 +53,7 @@ def harmonic_f1(precision, recall):
 
 
 def counts_from_predictions(predictions, targets):
-    """Compte ``(tp, fp, total)`` par classe a partir de decisions binaires."""
+    """Count ``(tp, fp, total)`` per class from binary decisions."""
     predictions = _as_float_tensor(predictions)
     targets = _as_float_tensor(targets)
     tp = (predictions * targets).sum(dim=0)
@@ -64,7 +63,7 @@ def counts_from_predictions(predictions, targets):
 
 
 def server_metrics_from_counts(tp, fp, total, class_metrics: bool = False):
-    """Agrege les compteurs par classe selon la formule du serveur."""
+    """Aggregate per-class counts with the server formula."""
     tp, fp, total = _as_float_tensor(tp), _as_float_tensor(fp), _as_float_tensor(total)
 
     class_prec = torch.where(tp > 0, tp / (tp + fp).clamp_min(1e-12), torch.zeros_like(tp))
@@ -78,8 +77,8 @@ def server_metrics_from_counts(tp, fp, total, class_metrics: bool = False):
         "f1": harmonic_f1(precision, recall),
         "precision": precision,
         "recall": recall,
-        # Le sujet nomme "accuracy" le rapport sum(tp)/sum(positifs), qui est en
-        # realite le rappel micro. On conserve le nom pour pouvoir comparer.
+        # The assignment calls "accuracy" the ratio sum(tp)/sum(positives),
+        # which is actually micro recall. The name is kept so scores stay comparable.
         "accuracy": float(tp.sum() / total.sum().clamp_min(1e-12)),
     }
 
@@ -99,13 +98,13 @@ def server_metrics_from_counts(tp, fp, total, class_metrics: bool = False):
 
 
 def server_metrics(predictions, targets, class_metrics: bool = False):
-    """Score du serveur a partir de decisions binaires (N, C)."""
+    """Server score from binary decisions of shape (N, C)."""
     tp, fp, total = counts_from_predictions(predictions, targets)
     return server_metrics_from_counts(tp, fp, total, class_metrics=class_metrics)
 
 
 def standard_metrics(predictions, targets) -> dict[str, float]:
-    """Macro et micro precision/rappel/F1, pour contextualiser le score pondere."""
+    """Macro and micro precision/recall/F1, to put the weighted score in context."""
     tp, fp, total = counts_from_predictions(predictions, targets)
     fn = total - tp
 
@@ -128,10 +127,10 @@ def standard_metrics(predictions, targets) -> dict[str, float]:
 
 
 def average_precision_per_class(scores, targets) -> torch.Tensor:
-    """Average precision par classe (aire sous la courbe P/R, style VOC/COCO).
+    """Average precision per class (area under the P/R curve, VOC/COCO style).
 
-    Independante du seuil de decision : utile pour comparer la qualite brute du
-    classement de deux modeles sans melanger l'effet de la calibration.
+    It does not depend on the decision threshold, so it compares the raw
+    ranking of two models without mixing in the effect of calibration.
     """
     scores = _as_float_tensor(scores)
     targets = _as_float_tensor(targets)
@@ -159,10 +158,10 @@ def mean_average_precision(scores, targets) -> float:
 
 
 def all_metrics(scores, targets, thresholds=0.5, class_metrics: bool = False):
-    """Jeu complet de metriques pour un ensemble de scores et de cibles.
+    """Full metric set for one batch of scores and targets.
 
-    ``thresholds`` accepte un scalaire ou un vecteur de taille (C,), ce qui
-    permet d'evaluer directement des seuils par classe.
+    ``thresholds`` can be a scalar or a vector of size (C,), so per-class
+    thresholds can be evaluated directly.
     """
     scores = _as_float_tensor(scores)
     targets = _as_float_tensor(targets)
@@ -181,11 +180,11 @@ def all_metrics(scores, targets, thresholds=0.5, class_metrics: bool = False):
 
 
 def threshold_count_table(scores, targets, grid):
-    """Pre-calcule ``tp`` et ``fp`` par (classe, seuil) pour la calibration.
+    """Precompute ``tp`` and ``fp`` per (class, threshold) for calibration.
 
-    Retourne ``(tp, fp, total)`` de formes (C, T), (C, T) et (C,). Ce tableau
-    rend l'optimisation des seuils par classe quasi instantanee : evaluer une
-    combinaison de seuils devient une simple indexation.
+    Returns ``(tp, fp, total)`` with shapes (C, T), (C, T) and (C,). This table
+    makes per-class threshold search almost free: scoring one combination is
+    just an index lookup.
     """
     scores = _as_float_tensor(scores)
     targets = _as_float_tensor(targets)

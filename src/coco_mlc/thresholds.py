@@ -1,11 +1,11 @@
-"""Calibration des seuils de decision multi-label.
+"""Calibration of multi-label decision thresholds.
 
-C'est le levier le plus rentable de ce challenge. La metrique du serveur pondere
-chaque classe par l'inverse de sa frequence : abaisser le seuil des classes
-rares augmente fortement leur rappel, pour un cout de precision reparti sur
-l'ensemble du score. Un seuil unique a 0,5 est donc tres sous-optimal.
+This is the most useful lever in this challenge. The server metric weights
+each class by the inverse of its frequency: lowering the threshold of rare
+classes raises their recall a lot, for a precision cost that is spread over
+the whole score. A single threshold of 0.5 is therefore a poor default.
 
-La calibration se fait exclusivement sur l'ensemble de validation.
+Calibration is done only on the validation set.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ DEFAULT_GRID = np.round(np.arange(0.02, 0.901, 0.02), 4)
 
 
 def _aggregate_f1(tp: torch.Tensor, fp: torch.Tensor, total: torch.Tensor, weights: torch.Tensor):
-    """F1 pondere du serveur a partir de compteurs par classe."""
+    """Weighted server F1 from per-class counts."""
     class_prec = torch.where(tp > 0, tp / (tp + fp).clamp_min(1e-12), torch.zeros_like(tp))
     class_recall = torch.where(tp > 0, tp / total.clamp_min(1e-12), torch.zeros_like(tp))
     precision = float((class_prec * weights).sum())
@@ -32,7 +32,7 @@ def _aggregate_f1(tp: torch.Tensor, fp: torch.Tensor, total: torch.Tensor, weigh
 
 
 def tune_global_threshold(scores, targets, grid=None):
-    """Meilleur seuil unique, et la courbe complete pour l'analyse."""
+    """Best single threshold, plus the full curve for analysis."""
     grid = np.asarray(DEFAULT_GRID if grid is None else grid, dtype=np.float64)
     tp_table, fp_table, total = threshold_count_table(scores, targets, grid)
     weights = metric_class_weights(total)
@@ -56,13 +56,13 @@ def tune_per_class_thresholds(
     init_threshold: float | None = None,
     verbose: bool = True,
 ):
-    """Seuils par classe par montee de coordonnees sur la metrique du serveur.
+    """Per-class thresholds by coordinate ascent on the server metric.
 
-    Les seuils ne sont pas separables : la precision agregee melange toutes les
-    classes, donc modifier le seuil d'une classe change le score des autres.
-    On optimise donc classe par classe, en repetant plusieurs passes jusqu'a
-    stabilisation. Le tableau de compteurs pre-calcule rend chaque evaluation
-    quasi gratuite.
+    The thresholds are not independent: the aggregated precision mixes every
+    class, so changing one class threshold changes the score of the others.
+    We therefore optimize one class at a time, and repeat several passes until
+    the score stops moving. The precomputed count table makes each evaluation
+    almost free.
     """
     grid = np.asarray(DEFAULT_GRID if grid is None else grid, dtype=np.float64)
     tp_table, fp_table, total = threshold_count_table(scores, targets, grid)
@@ -82,8 +82,8 @@ def tune_per_class_thresholds(
     best_f1 = score_of(selection)[0]
     history = [{"round": 0, "f1": best_f1}]
 
-    # Les classes rares pesent le plus : les traiter d'abord fait converger
-    # la montee de coordonnees plus vite.
+    # Rare classes weigh the most: handling them first makes coordinate
+    # ascent converge faster.
     order = np.argsort(-weights.numpy())
 
     for r in range(1, rounds + 1):
@@ -104,7 +104,7 @@ def tune_per_class_thresholds(
                 improved = True
         history.append({"round": r, "f1": best_f1})
         if verbose:
-            print(f"  passe {r}: F1 validation = {best_f1:.4f}")
+            print(f"  pass {r}: validation F1 = {best_f1:.4f}")
         if not improved:
             break
 
@@ -113,11 +113,11 @@ def tune_per_class_thresholds(
 
 
 def apply_thresholds(scores, thresholds, min_labels: int = 1) -> torch.Tensor:
-    """Decisions binaires, avec un minimum de classes predites par image.
+    """Binary decisions, with a minimum number of predicted classes per image.
 
-    Le format de soumission attend une liste d'indices par image. Une liste
-    vide ne peut etre qu'un faux negatif garanti, donc on retient au moins la
-    classe la plus probable.
+    The submission format expects a list of class indices per image. An empty
+    list can only be a guaranteed false negative, so we keep at least the
+    most likely class.
     """
     scores = torch.as_tensor(scores).float()
     thresholds = torch.as_tensor(thresholds).float()

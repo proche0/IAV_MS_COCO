@@ -1,16 +1,16 @@
-"""Boucles d'entrainement et d'evaluation, checkpoints et logging Tensorboard.
+"""Training and evaluation loops, checkpoints, and TensorBoard logging.
 
-Adapte des fonctions ``train_loop`` / ``validation_loop`` fournies dans le
-sujet, avec deux differences assumees :
+Adapted from the ``train_loop`` / ``validation_loop`` functions in the
+assignment, with two deliberate differences:
 
-- ``evaluate`` accumule les sorties du reseau puis delegue le calcul a
-  ``metrics.py``, ce qui permet de reutiliser exactement les memes scores pour
-  la calibration des seuils et l'analyse par classe ;
-- le seuillage est applique sur les probabilites ``sigmoid(logits)`` et non sur
-  les sorties brutes. Le code du sujet ecrit ``outputs > th_multi_label`` avec
-  ``th_multi_label=0.5`` par defaut, ce qui n'a de sens que si le reseau se
-  termine par une sigmoide ; avec ``BCEWithLogitsLoss`` le seuil equivalent sur
-  les logits serait 0.
+- ``evaluate`` stores the network outputs, then delegates the scores to
+  ``metrics.py``, so the same scores can be reused for threshold calibration
+  and per-class analysis;
+- the threshold is applied on the probabilities ``sigmoid(logits)``, not on
+  the raw outputs. The assignment code writes ``outputs > th_multi_label`` with
+  ``th_multi_label=0.5`` by default, which only makes sense if the network ends
+  with a sigmoid. With ``BCEWithLogitsLoss`` the matching threshold on the
+  logits would be 0.
 """
 
 from __future__ import annotations
@@ -25,15 +25,15 @@ from .metrics import all_metrics
 
 
 def _unpack(batch):
-    """Supporte les batches ``(x, y)`` et ``(x, y, id)``."""
+    """Supports batches ``(x, y)`` and ``(x, y, id)``."""
     return batch[0], batch[1]
 
 
 def frozen_modules_eval(net) -> None:
-    """Passe en eval les modules dont aucun parametre direct n'est entrainable.
+    """Set to eval the modules whose own parameters are all frozen.
 
-    ``net.train()`` remettrait sinon les BatchNorm geles en mode train, et leurs
-    statistiques courantes bougeraient alors que les poids sont figes.
+    ``net.train()`` would otherwise put frozen BatchNorm layers back in train
+    mode, and their running stats would move even though the weights are fixed.
     """
     for module in net.modules():
         params = list(module.parameters(recurse=False))
@@ -54,11 +54,11 @@ def train_one_epoch(
     scaler=None,
     frozen_eval: bool = False,
 ):
-    """Une epoque d'entrainement. Retourne la perte moyenne et l'historique.
+    """One training epoch. Returns the mean loss and the history.
 
-    ``mbatch_loss_group`` > 0 enregistre la perte moyenne tous les N
-    mini-batches, pour tracer une courbe plus fine que l'epoque.
-    ``scaler`` active la precision mixte (utile seulement sur GPU).
+    ``mbatch_loss_group`` > 0 records the mean loss every N mini-batches, for
+    a curve that is finer than one point per epoch.
+    ``scaler`` turns on mixed precision (useful only on GPU).
     """
     net.train()
     if frozen_eval:
@@ -115,12 +115,11 @@ def fit_stage(
     amp: bool = False,
     desc: str = "train",
 ) -> list[dict]:
-    """Plusieurs epoques avec erreur train et validation au seuil 0,5.
+    """Several epochs, with train and validation error at threshold 0.5.
 
-    L'evaluation train utilise ``train_eval_loader`` (sans augmentation), pour
-    que l'ecart train/validation mesure la generalisation et non le bruit des
-    transformations aleatoires. Le F1 est celui du serveur. L'erreur en
-    pourcentage vaut ``100 * (1 - F1)``.
+    Train evaluation uses ``train_eval_loader`` (no augmentation), so the
+    train/validation gap measures generalization and not the noise of random
+    transforms. F1 is the server F1. The error in percent is ``100 * (1 - F1)``.
     """
     use_amp = bool(amp and getattr(device, "type", device) == "cuda")
     scaler = torch.amp.GradScaler(device.type) if use_amp else None
@@ -155,23 +154,23 @@ def fit_stage(
         }
         history.append(row)
         print(
-            f"  epoque {epoch:2d}/{epochs}  "
+            f"  epoch {epoch:2d}/{epochs}  "
             f"train_loss={train_loss:.4f}  val_loss={val_results['loss']:.4f}  "
             f"P/R/F1 train={train_results['precision']:.3f}/"
             f"{train_results['recall']:.3f}/{train_results['f1']:.3f}  "
             f"val={val_results['precision']:.3f}/"
             f"{val_results['recall']:.3f}/{val_results['f1']:.3f}  "
-            f"erreur train={row['train_error']:.2f}%  val={row['val_error']:.2f}%"
+            f"error train={row['train_error']:.2f}%  val={row['val_error']:.2f}%"
         )
     return history
 
 
 @torch.no_grad()
 def collect_outputs(loader, net, device, progress: bool = True, desc: str = "eval", amp: bool = False):
-    """Concatene logits et cibles sur tout un loader.
+    """Concatenate logits and targets over a whole loader.
 
-    Les stocker une fois permet de calculer n'importe quel seuil ou metrique
-    ensuite sans repasser dans le reseau.
+    Storing them once lets us compute any threshold or metric afterwards
+    without another forward pass.
     """
     net.eval()
     logits_all = []
@@ -197,7 +196,7 @@ def evaluate(
     return_scores: bool = False,
     amp: bool = False,
 ):
-    """Perte et metriques completes sur un loader."""
+    """Loss and full metrics on one loader."""
     logits, targets = collect_outputs(loader, net, device, progress=progress, desc=desc, amp=amp)
     loss = float(criterion(logits, targets))
     scores = torch.sigmoid(logits)
@@ -255,7 +254,7 @@ class Timer:
 
 
 # ---------------------------------------------------------------------------
-# Tensorboard (optionnel) - repris du sujet, simplifie
+# TensorBoard (optional), simplified from the assignment
 # ---------------------------------------------------------------------------
 def update_graphs(
     summary_writer,
@@ -269,7 +268,7 @@ def update_graphs(
     mbatch_count: int = 0,
     mbatch_losses=None,
 ):
-    """Ecrit pertes et metriques dans un ``SummaryWriter``."""
+    """Write losses and metrics to a ``SummaryWriter``."""
     if mbatch_group > 0 and mbatch_losses:
         for i, value in enumerate(mbatch_losses):
             summary_writer.add_scalar(
@@ -284,9 +283,9 @@ def update_graphs(
         step,
     )
     for key, label in (
-        ("f1", "F1 (serveur)"),
-        ("precision", "Precision (serveur)"),
-        ("recall", "Recall (serveur)"),
+        ("f1", "F1 (server)"),
+        ("precision", "Precision (server)"),
+        ("recall", "Recall (server)"),
         ("accuracy", "Accuracy"),
         ("macro_f1", "Macro F1"),
         ("micro_f1", "Micro F1"),

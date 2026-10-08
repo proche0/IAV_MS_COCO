@@ -1,161 +1,93 @@
-# IAV — Challenge de classification multi-label MS COCO
+# IAV — MS COCO multi-label classification
 
-Repository du challenge MS COCO en IAV pour Tayeb et Paul.
+Repository for the MS COCO challenge in IAV, by Tayeb and Paul.
 
-Classification **multi-label** de 80 classes MS COCO : chaque image peut
-contenir plusieurs catégories d'objets. Énoncé complet dans
-[`sujet.ipynb`](sujet.ipynb).
+**Multi-label** classification over 80 MS COCO classes: one image can contain several object categories. The full statement is in [`sujet.ipynb`](sujet.ipynb).
 
 | | |
 | --- | --- |
-| Données | 65 000 images d'entraînement annotées, 4 952 images de test |
-| Sorties | 80 classes, vecteur multi-hot |
-| Métrique | F1 avec précision et rappel **pondérés par l'inverse de la fréquence** |
-| Soumission | [leaderboard](https://www.creatis.insa-lyon.fr/kechichian/ms-coco-classif-leaderboard.html) au format JSON |
+| Data | 65,000 labeled training images, 4,952 test images |
+| Outputs | 80 classes, multi-hot vector |
+| Metric | F1 with precision and recall **weighted by the inverse class frequency** |
+| Submission | [leaderboard](https://www.creatis.insa-lyon.fr/kechichian/ms-coco-classif-leaderboard.html), JSON format |
 
 ---
 
-## Le point qui détermine tout
+## What drives the score
 
-La métrique du serveur pondère chaque classe par `1/fréquence`. Résultat :
+The server metric weights each class by `1/frequency`. In practice:
 
-- `hair drier` (102 images) pèse **13,6 %** du score, `toaster` (117) **11,9 %** ;
-- les **10 classes les plus rares pèsent 43,8 %** du score ;
-- `person` (35 494 images) pèse **0,039 %**, soit 350 fois moins que `hair drier`.
+- `hair drier` (102 images) is **13.6%** of the score, `toaster` (117) is **11.9%**;
+- the **10 rarest classes are 43.8%** of the score;
+- `person` (35,494 images) is **0.039%**, about 350 times less than `hair drier`.
 
-Optimiser l'accuracy ou le micro-F1 mène donc à un mauvais score. Le levier
-principal est le **rappel sur les classes rares**, obtenu par des fonctions de
-coût adaptées au déséquilibre et par une **calibration des seuils classe par
-classe**. Analyse détaillée dans
-[`docs/03-outils-et-evaluation.md`](docs/03-outils-et-evaluation.md).
+Optimizing accuracy or micro-F1 therefore gives a poor server score. The main lever is **recall on rare classes**, through a loss that handles imbalance and **per-class threshold calibration**.
 
 ---
 
-## Installation
+## Setup
 
 ```bash
-# torch et torchvision doivent venir du meme build CUDA 12.
-# cu128 exige un pilote NVIDIA serie 570 ou plus recent.
+# torch and torchvision must come from the same CUDA 12 build.
+# cu128 needs an NVIDIA driver from the 570 series or newer.
 pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 
-# Pilote plus ancien : meme commande avec
+# Older driver: same command with
 # --index-url https://download.pytorch.org/whl/cu124
 ```
 
-Vérifier que la carte est visible :
+Check that the GPU is visible:
 
 ```bash
 python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
 
-Attendu : une version `+cu128` (ou `+cu124`), `True`, et `NVIDIA GeForce RTX 4060 Ti`.
+Expected: a `+cu128` (or `+cu124`) build, `True`, and `NVIDIA GeForce RTX 4060 Ti`.
 
-Le dataset n'est pas dans le dépôt. Il est attendu dans `../ms-coco` par rapport
-à la racine du dépôt, ou à l'emplacement indiqué par `MSCOCO_ROOT` :
-
-```bash
-export MSCOCO_ROOT=/chemin/vers/ms-coco
-```
-
-Structure attendue : `images/train/`, `images/test/`, `labels/train/`.
-
----
-
-## Démarrage rapide
+The dataset is not in the repository. It should sit in `../ms-coco` relative to the repo root, or at the path given by `MSCOCO_ROOT`:
 
 ```bash
-# 0. Vérifier la métrique et les données
-python3 tests/test_metrics_parity.py
-python3 scripts/explore_dataset.py
-
-# 1. Pré-calculer les features d'un backbone gelé (une seule fois, ~16 min en CPU)
-python3 scripts/cache_features.py --model mobilenet_v3_large
-
-# 2. Baseline, puis étude comparative des coûts et des têtes (secondes par run)
-python3 scripts/train_head.py --model mobilenet_v3_large
-python3 scripts/train_head.py --model mobilenet_v3_large --sweep
-
-# 3. Calibrer les seuils par classe sur la validation
-python3 scripts/tune_thresholds.py --checkpoint outputs/head_mobilenet_v3_large_mlp_bce.pth --save
-
-# 4. Produire le JSON de soumission
-python3 scripts/predict.py --checkpoint outputs/head_mobilenet_v3_large_mlp_bce.pth --submit-copy
+export MSCOCO_ROOT=/path/to/ms-coco
 ```
 
-Meilleur modèle actuel (CPU, backbone gelé) : **MobileNetV3-Large + MLP + BCE**,
-seuils par classe, F1 validation **0,6145**. Détail dans [`PROGRESS.md`](PROGRESS.md).
+Expected layout: `images/train/`, `images/test/`, `labels/train/`.
 
-Fine-tuning complet, en local, avec précision mixte (`--amp`). Les poids
-ImageNet (`Weights.DEFAULT`) sont téléchargés automatiquement au premier
-lancement.
+---
 
-```bash
-python3 scripts/train.py --model resnet18 --epochs 10 --loss bce \
-    --batch-size 128 --lr 1e-4 --amp --num-workers 2 --tensorboard
-python3 scripts/train.py --model resnet18 --epochs 10 --loss asl \
-    --batch-size 128 --lr 1e-4 --amp --num-workers 2
-python3 scripts/train.py --model resnet50 --epochs 10 --loss asl \
-    --batch-size 96 --lr 1e-4 --amp --num-workers 2
-python3 scripts/train.py --model convnext_tiny --epochs 10 --loss asl \
-    --batch-size 64 --lr 5e-5 --amp --num-workers 2
-python3 scripts/train.py --model swin_t --epochs 10 --loss asl \
-    --batch-size 64 --lr 5e-5 --amp --num-workers 2
+## How to run an experiment
+
+Open a notebook in [`notebooks/experiments`](notebooks/experiments). Each file trains one architecture: stratified 70/15/15 split, a frozen-backbone baseline, then fine-tuning. The server F1 is the metric. See [`notebooks/experiments/README.md`](notebooks/experiments/README.md) for the list.
+
+`FULL_TRAIN` is `False` by default (512 images, one epoch) so you can check the pipeline. Set it to `True` to train on the full set. ImageNet weights (`Weights.DEFAULT`) are downloaded on the first run.
+
+Submissions are written as JSON under `submissions/`.
+
+---
+
+## Repository layout
+
+```
+src/coco_mlc/          shared library used by the notebooks
+├── config.py          paths, 80 classes, default hyperparameters
+├── data.py            datasets, transforms, stratified split
+├── models.py          torchvision factory, classification heads
+├── losses.py          weighted BCE, focal loss, asymmetric loss
+├── metrics.py         server metric, macro/micro F1, mAP
+├── engine.py          train/eval loops, checkpoints
+├── thresholds.py      decision-threshold calibration
+├── diagnostics.py     error curves, model diagram, bias/variance report
+└── utils.py           seeds, experiment log
+
+notebooks/experiments/ one notebook per architecture
+outputs/               results, checkpoints, figures
+submissions/           JSON files for the leaderboard
 ```
 
 ---
 
-## Organisation du dépôt
+## Challenge rules
 
-```
-src/coco_mlc/          bibliothèque réutilisable
-├── config.py          chemins, 80 classes, hyperparamètres par défaut
-├── data.py            datasets, transformations, découpage stratifié
-├── models.py          fabrique torchvision, têtes de classification
-├── losses.py          BCE pondérée, focal loss, asymmetric loss
-├── metrics.py         métrique du serveur reproduite, macro/micro F1, mAP
-├── features.py        extraction et cache des features
-├── engine.py          boucles train/eval, checkpoints, Tensorboard
-├── thresholds.py      calibration des seuils de décision
-├── inference.py       reconstruction d'un modèle depuis un checkpoint
-└── utils.py           graines, registre d'expériences
-
-scripts/               programmes exécutables
-├── explore_dataset.py statistiques et figures
-├── benchmark_speed.py débit réel des backbones sur la machine
-├── cache_features.py  un forward sur tout le dataset, backbone gelé
-├── train_head.py      entraînement de têtes sur features (étude comparative)
-├── train.py           fine-tuning complet (partie 4 du sujet)
-├── tune_thresholds.py calibration des seuils
-└── predict.py         JSON de soumission (partie 5 du sujet)
-
-docs/                  explication des parties 3, 4, 5 du sujet
-notebooks/             analyse des résultats
-tests/                 parité de la métrique avec le code du sujet
-outputs/               résultats, checkpoints, figures (hors git)
-features/              caches de features (hors git)
-```
-
----
-
-## Documentation
-
-| Document | Contenu |
-| --- | --- |
-| [`docs/03-outils-et-evaluation.md`](docs/03-outils-et-evaluation.md) | les `Dataset`, les boucles, **la métrique du serveur décortiquée**, le découpage train/validation |
-| [`docs/04-programme-entrainement.md`](docs/04-programme-entrainement.md) | le squelette du sujet mis en correspondance avec le code, et pourquoi deux programmes d'entraînement |
-| [`docs/05-programme-soumission.md`](docs/05-programme-soumission.md) | format JSON, pièges de l'inférence, vérifications automatiques |
-| [`docs/06-modeles-preentraines.md`](docs/06-modeles-preentraines.md) | API des poids torchvision, adaptation à 80 sorties, candidats de l'étude |
-| [`PROGRESS.md`](PROGRESS.md) | journal de bord, expériences, scores leaderboard |
-
----
-
-## Règles du challenge à ne pas oublier
-
-- Une soumission portant le même nom de groupe **écrase** la précédente :
-  consulter le classement avant d'envoyer, et ne pas créer d'entrée en double.
-- Il est **interdit** d'utiliser une autre distribution de MS COCO, en
-  particulier le dataset torchvision ou les poids de détection `COCO_V1`. Seuls
-  les poids **ImageNet** sont utilisés.
-- Le test ne sert jamais à choisir un hyperparamètre ou un seuil : tout se décide
-  sur la validation.
+- A new submission with the same group name **overwrites** the previous one. Check the leaderboard before sending, and do not create a second entry.
+- Using another MS COCO distribution is **not allowed**, in particular the torchvision dataset or the `COCO_V1` detection weights. Only **ImageNet** weights are used.
+- The test set is never used to pick a hyperparameter or a threshold. Those choices are made on the validation set.

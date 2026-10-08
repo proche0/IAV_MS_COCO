@@ -1,13 +1,13 @@
-"""Datasets, transformations et decoupage train/validation/test.
+"""Datasets, transforms, and the train/validation/test split.
 
-Le layout reel du dataset fourni est :
+The real layout of the provided dataset is:
 
-    ms-coco/images/train/<id>.jpg   (65 000)
-    ms-coco/images/test/<id>.jpg    (4 952)
-    ms-coco/labels/train/<id>.cls   (65 000)
+    ms-coco/images/train/<id>.jpg   (65,000)
+    ms-coco/images/test/<id>.jpg    (4,952)
+    ms-coco/labels/train/<id>.cls   (65,000)
 
-Les images ont ete redimensionnees a grand cote = 224 en conservant le ratio,
-elles n'ont donc pas toutes la meme taille (ex. 224x149, 168x224).
+Images were resized so the long side is 224, keeping the aspect ratio, so they
+do not all have the same size (for example 224x149, 168x224).
 """
 
 from __future__ import annotations
@@ -29,15 +29,14 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
 # ---------------------------------------------------------------------------
-# Transformations
+# Transforms
 # ---------------------------------------------------------------------------
 class PadToSquare:
-    """Complete l'image en carre par des bordures, sans rien recadrer.
+    """Pad the image to a square with borders, without cropping anything.
 
-    Les images du dataset ont des ratios varies. Un ``Resize((S, S))`` direct
-    les deforme, et un ``CenterCrop`` supprime les bords ou peuvent se trouver
-    des objets a predire. Le padding conserve l'integralite du contenu et le
-    ratio d'origine.
+    Dataset images have varied aspect ratios. A direct ``Resize((S, S))``
+    stretches them, and a ``CenterCrop`` drops the borders where objects to
+    predict may sit. Padding keeps the full content and the original ratio.
     """
 
     def __init__(self, fill: int = 0):
@@ -62,18 +61,18 @@ def build_transforms(
     resize_mode: str = "pad",
     augment: str = "flip",
 ):
-    """Construit le pipeline de transformations.
+    """Build the transform pipeline.
 
-    ``resize_mode`` controle la mise en forme geometrique :
-      - ``"pad"``    : padding en carre puis redimensionnement (aucune perte) ;
-      - ``"squash"`` : redimensionnement direct en (S, S), deforme le ratio ;
-      - ``"crop"``   : redimensionnement du petit cote puis recadrage central.
+    ``resize_mode`` controls the geometric reshape:
+      - ``"pad"``    : pad to a square, then resize (nothing is dropped);
+      - ``"squash"`` : resize straight to (S, S), which changes the ratio;
+      - ``"crop"``   : resize the short side, then center-crop.
 
-    ``augment`` (uniquement si ``train=True``) :
-      - ``"none"``       : geometrie seule ;
-      - ``"flip"``       : retournement horizontal (baseline) ;
-      - ``"strong"``     : flip, jitter leger, affine leger ;
-      - ``"experiment"`` : flip, rotation / translation / echelle, jitter photometrique.
+    ``augment`` (only if ``train=True``):
+      - ``"none"``       : geometry only;
+      - ``"flip"``       : horizontal flip (baseline);
+      - ``"strong"``     : flip, light jitter, light affine;
+      - ``"experiment"`` : flip, rotation / translation / scale, photometric jitter.
     """
     if resize_mode == "pad":
         geometry = [PadToSquare(), T.Resize((image_size, image_size))]
@@ -82,7 +81,7 @@ def build_transforms(
     elif resize_mode == "crop":
         geometry = [T.Resize(image_size), T.CenterCrop(image_size)]
     else:
-        raise ValueError(f"resize_mode inconnu : {resize_mode!r}")
+        raise ValueError(f"unknown resize_mode: {resize_mode!r}")
 
     steps = list(geometry)
     if train:
@@ -101,7 +100,7 @@ def build_transforms(
                 T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.05),
             ]
         elif augment != "none":
-            raise ValueError(f"augment inconnu : {augment!r}")
+            raise ValueError(f"unknown augment: {augment!r}")
 
     steps += [T.ToTensor(), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)]
     return T.Compose(steps)
@@ -111,12 +110,12 @@ def build_transforms(
 # Datasets
 # ---------------------------------------------------------------------------
 class COCOTrainImageDataset(Dataset):
-    """Images annotees du sous-ensemble train, avec cibles multi-hot (80).
+    """Labeled images from the train subset, with multi-hot targets (80).
 
-    Reprend la logique du dataset fourni dans le sujet : la liste des exemples
-    est derivee des fichiers ``.cls`` tries, l'image correspondante est deduite
-    du nom de fichier. ``return_id`` ajoute l'identifiant de l'image aux
-    elements retournes, utile pour tracer les predictions.
+    Same idea as the dataset in the assignment: the example list comes from
+    the sorted ``.cls`` files, and the matching image is inferred from the
+    file name. ``return_id`` adds the image id to the returned items, which
+    is useful to trace predictions.
     """
 
     def __init__(
@@ -133,7 +132,7 @@ class COCOTrainImageDataset(Dataset):
         )
         self.img_labels = sorted(glob("*.cls", root_dir=str(self.annotations_dir)))
         if not self.img_labels:
-            raise RuntimeError(f"Aucun fichier .cls dans {self.annotations_dir}")
+            raise RuntimeError(f"No .cls file in {self.annotations_dir}")
         if max_images:
             self.img_labels = self.img_labels[:max_images]
         self.transform = transform
@@ -161,13 +160,13 @@ class COCOTrainImageDataset(Dataset):
 
 
 class COCOTestImageDataset(Dataset):
-    """Images du sous-ensemble test, retournees avec leur identifiant."""
+    """Images from the test subset, returned with their id."""
 
     def __init__(self, img_dir: str | Path | None = None, transform=None):
         self.img_dir = Path(img_dir) if img_dir is not None else PATHS.test_images
         self.img_list = sorted(glob("*.jpg", root_dir=str(self.img_dir)))
         if not self.img_list:
-            raise RuntimeError(f"Aucune image .jpg dans {self.img_dir}")
+            raise RuntimeError(f"No .jpg image in {self.img_dir}")
         self.transform = transform
 
     def __len__(self) -> int:
@@ -186,11 +185,10 @@ class COCOTestImageDataset(Dataset):
 
 
 class TransformSubset(Dataset):
-    """Vue d'un dataset restreinte a des indices, avec sa propre transformation.
+    """View of a dataset restricted to some indices, with its own transform.
 
-    Indispensable ici : l'augmentation aleatoire doit s'appliquer au train mais
-    pas a la validation, alors que les deux sous-ensembles proviennent du meme
-    dataset de base.
+    This is needed here: random augmentation must apply to train but not to
+    validation, while both subsets come from the same base dataset.
     """
 
     def __init__(self, base: COCOTrainImageDataset, indices, transform):
@@ -210,16 +208,16 @@ class TransformSubset(Dataset):
 
 
 class TensorBatchLoader:
-    """Itere par tranches sur des tenseurs deja en memoire.
+    """Iterate by slices over tensors that are already in memory.
 
-    Un ``DataLoader`` classique collecte les exemples un par un puis les
-    assemble, ce qui coute plus cher que le calcul lui-meme quand la "donnee"
-    est un vecteur de features de 512 valeurs et le modele une seule couche
-    lineaire. Le decoupage direct par tranches supprime ce surcout.
+    A classic ``DataLoader`` fetches examples one by one and then stacks them,
+    which costs more than the computation itself when the "data" is a feature
+    vector of 512 values and the model is a single linear layer. Slicing
+    directly removes that overhead.
 
-    L'interface (``__iter__``, ``__len__``, attribut ``dataset``) est celle
-    attendue par les fonctions de ``engine.py``, qui fonctionnent donc sans
-    modification sur des features comme sur des images.
+    The interface (``__iter__``, ``__len__``, ``dataset`` attribute) is the one
+    expected by the functions in ``engine.py``, so they work the same way on
+    features and on images.
     """
 
     def __init__(
@@ -233,7 +231,7 @@ class TensorBatchLoader:
         self.features = torch.as_tensor(features).float()
         self.labels = torch.as_tensor(labels).float()
         if len(self.features) != len(self.labels):
-            raise ValueError("features et labels de tailles differentes")
+            raise ValueError("features and labels have different lengths")
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.generator = generator
@@ -258,13 +256,13 @@ class TensorBatchLoader:
 
 
 # ---------------------------------------------------------------------------
-# Lecture rapide des annotations (sans charger les images)
+# Fast annotation loading (without decoding images)
 # ---------------------------------------------------------------------------
 def load_label_matrix(annotations_dir: str | Path | None = None):
-    """Retourne ``(ids, Y)`` avec ``Y`` de forme (N, 80) en uint8.
+    """Return ``(ids, Y)`` with ``Y`` of shape (N, 80) and dtype uint8.
 
-    Permet de calculer les statistiques de classes, les poids de la metrique et
-    le decoupage stratifie sans jamais decoder une image.
+    This computes class statistics, metric weights, and the stratified split
+    without ever decoding an image.
     """
     annotations_dir = Path(annotations_dir) if annotations_dir else PATHS.train_labels
     names = sorted(glob("*.cls", root_dir=str(annotations_dir)))
@@ -281,7 +279,7 @@ def class_frequencies(Y: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Decoupage train / validation
+# Train / validation split
 # ---------------------------------------------------------------------------
 def random_split_indices(n: int, val_fraction: float, seed: int):
     g = torch.Generator().manual_seed(seed)
@@ -291,13 +289,13 @@ def random_split_indices(n: int, val_fraction: float, seed: int):
 
 
 def iterative_stratified_split(Y: np.ndarray, val_fraction: float, seed: int):
-    """Stratification iterative multi-label (Sechidis et al., 2011).
+    """Iterative multi-label stratification (Sechidis et al., 2011).
 
-    Un tirage purement aleatoire laisse tres peu de positifs en validation pour
-    les classes rares (``hair drier`` n'a que 102 positifs sur 65 000 images),
-    ce qui rend la metrique locale bruitee alors que ces classes dominent le
-    score du serveur. Cet algorithme repartit les exemples en traitant les
-    classes de la plus rare a la plus frequente.
+    A purely random draw leaves very few positives in validation for rare
+    classes (``hair drier`` has only 102 positives out of 65,000 images),
+    which makes the local metric noisy even though those classes dominate the
+    server score. This algorithm assigns examples from the rarest class to
+    the most frequent one.
     """
     Y = np.asarray(Y, dtype=np.int64)
     n, c = Y.shape
@@ -329,7 +327,7 @@ def iterative_stratified_split(Y: np.ndarray, val_fraction: float, seed: int):
             desired[s] -= Y[i]
             desired_total[s] -= 1
 
-    # Exemples sans aucun label (absents de ce dataset, mais on reste robuste).
+    # Examples with no label (absent from this dataset, but we stay robust).
     leftovers = np.flatnonzero(remaining)
     if leftovers.size:
         rng.shuffle(leftovers)
@@ -349,10 +347,10 @@ def get_split(
     strategy: str = "stratified",
     cache_path: str | Path | None = None,
 ):
-    """Decoupage reproductible, mis en cache sur disque.
+    """Reproducible split, cached on disk.
 
-    Le cache garantit que toutes les experiences (features pre-calculees,
-    fine-tuning, calibration de seuils) partagent exactement le meme split.
+    The cache makes sure every experiment (precomputed features, fine-tuning,
+    threshold calibration) shares exactly the same split.
     """
     if cache_path is None:
         cache_path = PATHS.outputs / f"split_{strategy}_{val_fraction:g}_{seed}.json"
@@ -367,7 +365,7 @@ def get_split(
     elif strategy == "random":
         train_idx, val_idx = random_split_indices(len(Y), val_fraction, seed)
     else:
-        raise ValueError(f"strategy inconnue : {strategy!r}")
+        raise ValueError(f"unknown strategy: {strategy!r}")
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(
@@ -386,7 +384,7 @@ def get_split(
 
 
 def _fraction_token(value: float) -> str:
-    """``0.15`` -> ``"0.15"``, ``0.7`` -> ``"0.7"`` (stable malgre le binaire)."""
+    """``0.15`` -> ``"0.15"``, ``0.7`` -> ``"0.7"`` (stable despite binary floats)."""
     return f"{value:.4f}".rstrip("0").rstrip(".")
 
 
@@ -396,19 +394,19 @@ def iterative_stratified_split_three(
     test_fraction: float,
     seed: int,
 ):
-    """Stratification iterative en trois ensembles : train, validation, test.
+    """Iterative stratification into three sets: train, validation, test.
 
-    Meme algorithme que ``iterative_stratified_split`` (Sechidis et al., 2011),
-    avec trois quotas. Le test local est un sous-ensemble des images annotees :
-    le test officiel du challenge n'a pas d'etiquettes. ``get_split`` (80/20)
-    n'est pas utilise et son cache n'est pas touche.
+    Same algorithm as ``iterative_stratified_split`` (Sechidis et al., 2011),
+    with three quotas. The local test is a subset of the labeled images: the
+    official challenge test set has no labels. ``get_split`` (80/20) is not
+    used and its cache is left untouched.
     """
     if val_fraction <= 0 or test_fraction <= 0:
-        raise ValueError("val_fraction et test_fraction doivent etre strictement positifs")
+        raise ValueError("val_fraction and test_fraction must be strictly positive")
     train_fraction = 1.0 - float(val_fraction) - float(test_fraction)
     if train_fraction <= 1e-9:
         raise ValueError(
-            f"la fraction train est nulle ou negative "
+            f"the train fraction is zero or negative "
             f"(val={val_fraction}, test={test_fraction})"
         )
 
@@ -455,7 +453,7 @@ def iterative_stratified_split_three(
         assignment[leftovers[n_val + n_test:]] = 0
 
     if np.any(assignment < 0):
-        raise RuntimeError("decoupage incomplet : certains indices n'ont pas ete assignes")
+        raise RuntimeError("incomplete split: some indices were not assigned")
 
     train_idx = np.flatnonzero(assignment == 0).tolist()
     val_idx = np.flatnonzero(assignment == 1).tolist()
@@ -464,16 +462,16 @@ def iterative_stratified_split_three(
 
 
 def random_split_three(n: int, val_fraction: float, test_fraction: float, seed: int):
-    """Tirage aleatoire en trois ensembles disjoints."""
+    """Random draw into three disjoint sets."""
     train_fraction = 1.0 - float(val_fraction) - float(test_fraction)
     if min(train_fraction, val_fraction, test_fraction) <= 0:
-        raise ValueError("les trois fractions doivent etre strictement positives")
+        raise ValueError("the three fractions must be strictly positive")
     g = torch.Generator().manual_seed(seed)
     perm = torch.randperm(n, generator=g).tolist()
     n_val = max(1, int(round(n * val_fraction)))
     n_test = max(1, int(round(n * test_fraction)))
     if n_val + n_test >= n:
-        raise ValueError("train trop petit pour ces fractions")
+        raise ValueError("train set is too small for these fractions")
     val_idx = perm[:n_val]
     test_idx = perm[n_val:n_val + n_test]
     train_idx = perm[n_val + n_test:]
@@ -488,12 +486,12 @@ def get_three_way_split(
     strategy: str = "stratified",
     cache_path: str | Path | None = None,
 ):
-    """Decoupage reproductible train / validation / test, cache a part de ``get_split``.
+    """Reproducible train / validation / test split, cached apart from ``get_split``.
 
-    Le fichier par defaut est
-    ``outputs/split_three_stratified_0.7_0.15_0.15_42.json`` pour le jeu complet.
-    Un appel avec un autre ``n`` (essai ``MAX_IMAGES``) n'ecrase pas ce cache :
-    il ecrit un fichier suffixe par la taille.
+    The default file is
+    ``outputs/split_three_stratified_0.7_0.15_0.15_42.json`` for the full set.
+    A call with another ``n`` (a ``MAX_IMAGES`` trial) does not overwrite that
+    cache: it writes a file whose name is suffixed by the size.
     """
     train_fraction = 1.0 - float(val_fraction) - float(test_fraction)
     if cache_path is None:
@@ -537,7 +535,7 @@ def get_three_way_split(
             len(Y), val_fraction, test_fraction, seed
         )
     else:
-        raise ValueError(f"strategy inconnue : {strategy!r}")
+        raise ValueError(f"unknown strategy: {strategy!r}")
 
     write_path.parent.mkdir(parents=True, exist_ok=True)
     write_path.write_text(

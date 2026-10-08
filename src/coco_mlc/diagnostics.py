@@ -1,8 +1,8 @@
-"""Courbes d'erreur, schema de modele et diagnostic biais / variance.
+"""Error curves, model diagram, and bias/variance diagnosis.
 
-L'erreur affichee est le complement du F1 du serveur, en pourcentage :
-``100 * (1 - F1)``. C'est le critere du challenge, pas une erreur de
-classification mono-label.
+The plotted error is the complement of the server F1, in percent:
+``100 * (1 - F1)``. That is the challenge criterion, not a single-label
+classification error.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from matplotlib.patches import FancyBboxPatch
 
 from .models import classifier_in_features, count_parameters
 
-# Seuils en points de pourcentage, cales sur les exemples du protocole :
-# sous-apprentissage 10/12, surapprentissage 1/10, les deux 10/20, ideal 0,5/1.
+# Thresholds in percentage points, set from the protocol examples:
+# underfit 10/12, overfit 1/10, both 10/20, ideal 0.5/1.
 HIGH_ERROR = 8.0
 IDEAL_TRAIN = 2.0
 IDEAL_VAL = 3.0
@@ -27,32 +27,31 @@ OVERFIT_TRAIN = 5.0
 TEST_GAP = 3.0
 
 UNDERFIT_ACTIONS = [
-    "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
-    "Entraîner plus longtemps.",
-    "Changer d'algorithme d'optimisation.",
-    "Lancer une recherche d'hyperparamètres.",
+    "Use a larger network (more layers or more units).",
+    "Train for longer.",
+    "Change the optimizer.",
+    "Run a hyperparameter search.",
 ]
 OVERFIT_ACTIONS = [
-    "Agrandir et diversifier le jeu d'entraînement.",
-    "Intensifier l'augmentation de données.",
-    "Ajouter de la régularisation (norme L2, dropout).",
-    "Lancer une recherche d'hyperparamètres.",
+    "Collect a larger and more varied training set.",
+    "Use stronger data augmentation.",
+    "Add regularization (L2 penalty, dropout).",
+    "Run a hyperparameter search.",
 ]
 TEST_ACTION = (
-    "Le test local sous-performe par rapport à la validation : constituer un "
-    "ensemble de validation plus grand et plus diversifié, pour éviter de "
-    "surapprendre les données d'évaluation. Ne pas réutiliser ce test pour "
-    "choisir les hyperparamètres."
+    "The local test is worse than the validation set: build a larger and more "
+    "varied validation set, so the model does not overfit the evaluation data. "
+    "Do not reuse this test set to choose hyperparameters."
 )
 
 
 def error_percent(f1: float) -> float:
-    """Pourcentage d'erreur associe au F1 du serveur."""
+    """Error percent matching the server F1."""
     return 100.0 * (1.0 - float(f1))
 
 
 def save_history(history, path: str | Path) -> Path:
-    """Ecrit l'historique d'une etape pour reafficher les courbes plus tard."""
+    """Write the history of one stage so the curves can be plotted again later."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(list(history)).to_csv(path, index=False)
@@ -72,26 +71,26 @@ def _as_frame(history) -> pd.DataFrame:
 
 
 def plot_error_curves(history, title: str | None = None):
-    """Erreurs train/validation (%) et pertes, par epoque."""
+    """Train/validation errors (%) and losses, per epoch."""
     frame = _as_frame(history)
     if frame.empty:
-        raise ValueError("historique vide")
+        raise ValueError("empty history")
     epochs = frame["epoch"] if "epoch" in frame.columns else range(1, len(frame) + 1)
 
     fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.8))
-    axes[0].plot(epochs, frame["train_error"], marker="o", label="Entraînement")
+    axes[0].plot(epochs, frame["train_error"], marker="o", label="Train")
     axes[0].plot(epochs, frame["val_error"], marker="o", label="Validation")
-    axes[0].set_xlabel("Époque")
-    axes[0].set_ylabel("Erreur (%)  =  100 × (1 − F1)")
-    axes[0].set_title("Erreurs")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Error (%)  =  100 × (1 − F1)")
+    axes[0].set_title("Errors")
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
 
-    axes[1].plot(epochs, frame["train_loss"], marker="o", label="Entraînement")
+    axes[1].plot(epochs, frame["train_loss"], marker="o", label="Train")
     axes[1].plot(epochs, frame["val_loss"], marker="o", label="Validation")
-    axes[1].set_xlabel("Époque")
-    axes[1].set_ylabel("Perte")
-    axes[1].set_title("Pertes")
+    axes[1].set_xlabel("Epoch")
+    axes[1].set_ylabel("Loss")
+    axes[1].set_title("Losses")
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
 
@@ -102,7 +101,7 @@ def plot_error_curves(history, title: str | None = None):
 
 
 def plot_model_diagram(model, frozen: bool):
-    """Schema en trois blocs : prétraitement, extracteur, tête à 80 logits."""
+    """Three-block diagram: preprocessing, backbone, head with 80 logits."""
     total, trainable = count_parameters(model)
     feature_dim = classifier_in_features(model)
     frozen_params = total - trainable
@@ -113,16 +112,16 @@ def plot_model_diagram(model, frozen: bool):
     ax.axis("off")
 
     if frozen:
-        extractor_sub = f"gelé\n{frozen_params / 1e6:.1f} M"
-        head_sub = f"entraînable\n{trainable / 1e6:.2f} M"
+        extractor_sub = f"frozen\n{frozen_params / 1e6:.1f} M"
+        head_sub = f"trainable\n{trainable / 1e6:.2f} M"
     else:
-        extractor_sub = "entraînable"
-        head_sub = "entraînable"
+        extractor_sub = "trainable"
+        head_sub = "trainable"
 
     blocks = [
-        (0.3, "Prétraitement", "ImageNet\n(figé)"),
-        (4.2, "Extracteur", extractor_sub),
-        (8.1, f"Tête  {feature_dim} → 80", head_sub),
+        (0.3, "Preprocessing", "ImageNet\n(fixed)"),
+        (4.2, "Backbone", extractor_sub),
+        (8.1, f"Head  {feature_dim} → 80", head_sub),
     ]
     for x, title, subtitle in blocks:
         patch = FancyBboxPatch(
@@ -144,8 +143,8 @@ def plot_model_diagram(model, frozen: bool):
             arrowprops={"arrowstyle": "->", "color": "#1f4e79", "lw": 1.4},
         )
 
-    mode = "extracteur gelé, tête seule" if frozen else "réseau entier entraînable"
-    ax.set_title(f"{total / 1e6:.1f} M paramètres — {mode}", loc="left", fontsize=11)
+    mode = "frozen backbone, head only" if frozen else "whole network trainable"
+    ax.set_title(f"{total / 1e6:.1f} M parameters — {mode}", loc="left", fontsize=11)
     fig.tight_layout()
     return fig
 
@@ -155,13 +154,13 @@ def diagnose_errors(
     val_error: float,
     test_error: float | None = None,
 ) -> dict:
-    """Confronte les erreurs train / validation / test et propose la suite.
+    """Compare train / validation / test errors and suggest a next step.
 
-    Les erreurs sont des pourcentages ``100 * (1 - F1)``. Le cas train/validation
-    est choisi parmi sous-apprentissage, surapprentissage, les deux, idéal, ou
-    intermédiaire. Un test nettement pire que la validation ajoute un avertissement,
-    sans remplacer ce cas. Le dictionnaire est renvoyé sans affichage : le notebook
-    l'écrit en JSON et n'imprime que le texte via ``format_diagnosis``.
+    Errors are percentages ``100 * (1 - F1)``. The train/validation case is
+    one of underfit, overfit, both, ideal, or intermediate. A test that is
+    clearly worse than validation adds a warning, without replacing that case.
+    The dict is returned without printing: the notebook writes it to JSON and
+    prints the text through ``format_diagnosis``.
     """
     train_error = float(train_error)
     val_error = float(val_error)
@@ -169,7 +168,7 @@ def diagnose_errors(
 
     if train_error >= HIGH_ERROR and val_error >= HIGH_ERROR and gap >= LARGE_GAP:
         regime = "both"
-        title = "Sous-apprentissage et surapprentissage simultanés"
+        title = "Underfitting and overfitting at the same time"
         actions = _unique(UNDERFIT_ACTIONS + OVERFIT_ACTIONS)
     elif (
         train_error < IDEAL_TRAIN
@@ -177,24 +176,24 @@ def diagnose_errors(
         and abs(gap) < IDEAL_GAP
     ):
         regime = "ideal"
-        title = "Modèle idéal"
+        title = "Ideal model"
         actions = [
-            "Les erreurs sont très basses et proches : le protocole peut être conservé."
+            "Errors are very low and close: the protocol can stay as it is."
         ]
     elif train_error >= HIGH_ERROR and val_error >= HIGH_ERROR and gap < CLOSE_GAP:
         regime = "underfit"
-        title = "Sous-apprentissage (biais élevé)"
+        title = "Underfitting (high bias)"
         actions = list(UNDERFIT_ACTIONS)
     elif train_error < OVERFIT_TRAIN and gap >= LARGE_GAP:
         regime = "overfit"
-        title = "Surapprentissage (variance élevée)"
+        title = "Overfitting (high variance)"
         actions = list(OVERFIT_ACTIONS)
     else:
         regime = "intermediate"
-        title = "Cas intermédiaire"
+        title = "Intermediate case"
         actions = [
-            "Les erreurs ne correspondent à aucun des quatre régimes types. "
-            "Lire le niveau absolu et l'écart avant de changer de modèle."
+            "The errors do not match any of the four typical regimes. "
+            "Read the absolute level and the gap before changing the model."
         ]
 
     test_gap = None
@@ -226,25 +225,25 @@ def _f1(error: float) -> float:
 def _reading(result: dict) -> str:
     regime = result["regime"]
     if regime == "underfit":
-        text = "Erreurs hautes et proches : le modèle n'a pas encore assez appris."
+        text = "Errors are high and close: the model has not learned enough yet."
     elif regime == "overfit":
-        text = "L'entraînement est bas et la validation décroche : le modèle retient le train."
+        text = "Train error is low and validation drops: the model is memorizing the train set."
     elif regime == "both":
         text = (
-            "Erreurs hautes, et un écart net : apprentissage incomplet "
-            "et généralisation faible."
+            "Errors are high, and the gap is large: learning is incomplete "
+            "and generalization is weak."
         )
     elif regime == "ideal":
-        text = "Erreurs basses et proches."
+        text = "Errors are low and close."
     else:
-        text = "Ni le niveau ni l'écart ne correspondent à un des quatre exemples types."
+        text = "Neither the level nor the gap matches one of the four typical examples."
     if result.get("poor_test_generalization"):
-        text += " Le test local est nettement pire que la validation."
+        text += " The local test is clearly worse than validation."
     return text
 
 
 def format_diagnosis(result: dict, heading: str | None = None) -> str:
-    """Résumé lisible d'un diagnostic, sans la liste d'actions."""
+    """Readable summary of one diagnosis, without the action list."""
     lines = []
     if heading:
         lines.append(heading)
@@ -255,46 +254,46 @@ def format_diagnosis(result: dict, heading: str | None = None) -> str:
         f1 += f" | test {_f1(result['test_error']):.3f}"
     lines.append(f1)
     lines.append(
-        f"Erreur train {result['train_error']:.1f} % | "
-        f"validation {result['val_error']:.1f} % | "
-        f"écart {result['gap']:+.1f} pts"
+        f"Train error {result['train_error']:.1f}% | "
+        f"validation {result['val_error']:.1f}% | "
+        f"gap {result['gap']:+.1f} pts"
     )
     if result.get("test_error") is not None:
         lines.append(
-            f"Test {result['test_error']:.1f} % | "
-            f"écart avec la validation {result['test_gap']:+.1f} pts"
+            f"Test {result['test_error']:.1f}% | "
+            f"gap with validation {result['test_gap']:+.1f} pts"
         )
     lines.append(_reading(result))
     return "\n".join(lines)
 
 
 def format_actions(result: dict) -> str:
-    """Pistes regroupées, une seule fois pour le point de fonctionnement."""
-    lines = ["Suite proposée"]
+    """Grouped suggestions, printed once for the operating point."""
+    lines = ["Suggested next steps"]
     regime = result["regime"]
     if regime == "both":
-        lines.append("Apprentissage")
+        lines.append("Learning")
         lines.extend(f"- {item}" for item in UNDERFIT_ACTIONS)
-        lines.append("Généralisation")
+        lines.append("Generalization")
         lines.extend(f"- {item}" for item in OVERFIT_ACTIONS)
     elif regime == "ideal":
-        lines.append("- Le protocole peut être conservé.")
+        lines.append("- The protocol can stay as it is.")
     elif regime == "intermediate":
-        lines.append("- Comparer le niveau des erreurs et l'écart avant de changer de modèle.")
+        lines.append("- Compare the error level and the gap before changing the model.")
     else:
         kept = [item for item in result["actions"] if item != TEST_ACTION]
         lines.extend(f"- {item}" for item in kept)
     if result.get("poor_test_generalization"):
         lines.append("Test")
         lines.append(
-            "- Élargir et diversifier la validation. "
-            "Ne pas régler les hyperparamètres sur ce test."
+            "- Make the validation set larger and more varied. "
+            "Do not tune hyperparameters on this test set."
         )
     return "\n".join(lines)
 
 
 def format_report(sections: list[tuple[str, dict]]) -> str:
-    """Trois étapes en résumé, puis les pistes du dernier cas seulement."""
+    """Short summary of three stages, then the suggestions of the last case only."""
     blocks = [format_diagnosis(result, heading=heading) for heading, result in sections]
     if sections:
         blocks.append(format_actions(sections[-1][1]))
