@@ -1,0 +1,75 @@
+{
+  "notebook": "exp_shufflenet_v2_x1_0.ipynb",
+  "model": "shufflenet_v2_x1_0",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.07626556605100632,
+      "precision_val": 0.077006496489048,
+      "recall_train": 0.44175177812576294,
+      "recall_val": 0.4422808885574341,
+      "f1_train": 0.13007459997827125,
+      "f1_val": 0.13117399987994108
+    },
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 86.99254000217287,
+      "val_error": 86.8826000120059,
+      "test_error": null,
+      "gap": -0.10993999016697842,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.1343534290790558,
+      "precision_val": 0.12675818800926208,
+      "recall_train": 0.6372194886207581,
+      "recall_val": 0.616034746170044,
+      "f1_train": 0.221917129044463,
+      "f1_val": 0.2102536106150159
+    },
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 77.8082870955537,
+      "val_error": 78.97463893849842,
+      "test_error": 78.0493428510455,
+      "gap": 1.1663518429447208,
+      "test_gap": -0.9252960874529208,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 48.15473239445082,
+      "val_error": 45.76589272952953,
+      "test_error": 51.76622659007863,
+      "gap": -2.388839664921285,
+      "test_gap": 6.000333860549098,
+      "poor_test_generalization": true,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "The local test is worse than the validation set: build a larger and more varied validation set, so the model does not overfit the evaluation data. Do not reuse this test set to choose hyperparameters."
+      ]
+    }
+  }
+}
