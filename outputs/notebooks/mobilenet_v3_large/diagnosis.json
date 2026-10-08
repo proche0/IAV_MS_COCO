@@ -1,0 +1,80 @@
+{
+  "notebook": "exp_mobilenet_v3_large.ipynb",
+  "model": "mobilenet_v3_large",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.2782030403614044,
+      "precision_val": 0.24521338939666748,
+      "recall_train": 0.8074343800544739,
+      "recall_val": 0.6781192421913147,
+      "f1_train": 0.4138226910738402,
+      "f1_val": 0.36018204513545804
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 58.61773089261598,
+      "val_error": 63.981795486454196,
+      "test_error": null,
+      "gap": 5.364064593838215,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.31627148389816284,
+      "precision_val": 0.2732963263988495,
+      "recall_train": 0.8780350685119629,
+      "recall_val": 0.7045779824256897,
+      "f1_train": 0.4650354692813275,
+      "f1_val": 0.39383093005055125
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 53.49645307186726,
+      "val_error": 60.61690699494488,
+      "test_error": 58.973462783978725,
+      "gap": 7.120453923077619,
+      "test_gap": -1.6434442109661518,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 33.81813023334141,
+      "val_error": 35.755311845210095,
+      "test_error": 38.72961674698801,
+      "gap": 1.937181611868688,
+      "test_gap": 2.974304901777913,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  }
+}
