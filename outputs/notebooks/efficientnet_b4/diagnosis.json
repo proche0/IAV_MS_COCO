@@ -1,0 +1,81 @@
+{
+  "notebook": "exp_efficientnet_b4.ipynb",
+  "model": "efficientnet_b4",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.33111071586608887,
+      "precision_val": 0.28460973501205444,
+      "recall_train": 0.7946287989616394,
+      "recall_val": 0.6621406078338623,
+      "f1_train": 0.46744403479922714,
+      "f1_val": 0.398102127684123
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Sous-apprentissage et surapprentissage simultanés",
+      "train_error": 53.25559652007728,
+      "val_error": 60.1897872315877,
+      "test_error": null,
+      "gap": 6.934190711510418,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Agrandir et diversifier le jeu d'entraînement.",
+        "Intensifier l'augmentation de données.",
+        "Ajouter de la régularisation (norme L2, dropout)."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.37480130791664124,
+      "precision_val": 0.3226087987422943,
+      "recall_train": 0.8063966035842896,
+      "recall_val": 0.687608540058136,
+      "f1_train": 0.5117491298962407,
+      "f1_val": 0.43916998173186284
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Sous-apprentissage et surapprentissage simultanés",
+      "train_error": 48.82508701037593,
+      "val_error": 56.083001826813714,
+      "test_error": 55.2923585555527,
+      "gap": 7.257914816437783,
+      "test_gap": -0.7906432712610112,
+      "poor_test_generalization": false,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Agrandir et diversifier le jeu d'entraînement.",
+        "Intensifier l'augmentation de données.",
+        "Ajouter de la régularisation (norme L2, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Sous-apprentissage (biais élevé)",
+      "train_error": 34.895192336340216,
+      "val_error": 34.088815948704934,
+      "test_error": 42.415528063064926,
+      "gap": -0.8063763876352823,
+      "test_gap": 8.326712114359992,
+      "poor_test_generalization": true,
+      "actions": [
+        "Utiliser un réseau plus volumineux (plus de couches ou d'unités).",
+        "Entraîner plus longtemps.",
+        "Changer d'algorithme d'optimisation.",
+        "Lancer une recherche d'hyperparamètres.",
+        "Le test local sous-performe par rapport à la validation : constituer un ensemble de validation plus grand et plus diversifié, pour éviter de surapprendre les données d'évaluation. Ne pas réutiliser ce test pour choisir les hyperparamètres."
+      ]
+    }
+  }
+}
