@@ -1,0 +1,71 @@
+{
+  "notebook": "exp_resnet18.ipynb",
+  "model": "resnet18",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.18542708456516266,
+      "precision_val": 0.1693655550479889,
+      "recall_train": 0.7470859885215759,
+      "recall_val": 0.6532301306724548,
+      "f1_train": 0.297111066362826,
+      "f1_val": 0.2689892144486871
+    },
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 70.28889336371739,
+      "val_error": 73.10107855513128,
+      "test_error": null,
+      "gap": 2.8121851914138887,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.300406813621521,
+      "precision_val": 0.26732298731803894,
+      "recall_train": 0.7973580956459045,
+      "recall_val": 0.7002390623092651,
+      "f1_train": 0.4363990920208181,
+      "f1_val": 0.38693125271996565
+    },
+    "diagnosis": {
+      "regime": "intermediate",
+      "title": "Intermediate case",
+      "train_error": 56.3600907979182,
+      "val_error": 61.306874728003436,
+      "test_error": 61.68742507533524,
+      "gap": 4.946783930085239,
+      "test_gap": 0.3805503473318055,
+      "poor_test_generalization": false,
+      "actions": [
+        "The errors do not match any of the four typical regimes. Read the absolute level and the gap before changing the model."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 36.15058712228441,
+      "val_error": 38.419431581731764,
+      "test_error": 40.45599726503967,
+      "gap": 2.268844459447351,
+      "test_gap": 2.0365656833079058,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  }
+}

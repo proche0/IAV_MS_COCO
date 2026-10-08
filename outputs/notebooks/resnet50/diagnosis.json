@@ -1,0 +1,77 @@
+{
+  "notebook": "exp_resnet50.ipynb",
+  "model": "resnet50",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.29183870553970337,
+      "precision_val": 0.2533959746360779,
+      "recall_train": 0.8532130718231201,
+      "recall_val": 0.7099301218986511,
+      "f1_train": 0.4349158760381794,
+      "f1_val": 0.37348398597137544
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 56.50841239618206,
+      "val_error": 62.651601402862454,
+      "test_error": null,
+      "gap": 6.1431890066803945,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.4025964140892029,
+      "precision_val": 0.3309699296951294,
+      "recall_train": 0.9362197518348694,
+      "recall_val": 0.7202714681625366,
+      "f1_train": 0.5630626884879995,
+      "f1_val": 0.45353654767587304
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 43.693731151200055,
+      "val_error": 54.6463452324127,
+      "test_error": 53.59234246751936,
+      "gap": 10.952614081212644,
+      "test_gap": -1.0540027648933403,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "intermediate",
+      "title": "Intermediate case",
+      "train_error": 26.711360948080454,
+      "val_error": 31.547116401399343,
+      "test_error": 33.5709905604041,
+      "gap": 4.835755453318889,
+      "test_gap": 2.0238741590047553,
+      "poor_test_generalization": false,
+      "actions": [
+        "The errors do not match any of the four typical regimes. Read the absolute level and the gap before changing the model."
+      ]
+    }
+  }
+}
