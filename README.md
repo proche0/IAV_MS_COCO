@@ -80,7 +80,7 @@ jupyter notebook
 
 Experiment 1 notebooks are in `notebooks/experiments/1/`. Experiment 2 notebooks are in `notebooks/experiments/2/`. ImageNet weights (`Weights.DEFAULT`) are downloaded on the first run.
 
-This archive contains **no checkpoints, images, or other binaries** (Moodle rule). Training writes weights to `outputs/notebooks/…/*.pth`. The report notebook is `final_notebook.ipynb`.
+This archive contains **no checkpoints or dataset images**. Training writes weights to `outputs/notebooks/…/*.pth`. The report notebook is `final_notebook.ipynb`; the ranking tables and validation curves it embeds are in `results/`.
 
 ---
 
