@@ -57,9 +57,9 @@ Expected layout: `images/train/`, `images/test/`, `labels/train/`.
 
 ## How to run an experiment
 
-Open a notebook in [`notebooks/experiments`](notebooks/experiments). Each file trains one architecture: stratified 70/15/15 split, a frozen-backbone baseline, then fine-tuning. The server F1 is the metric. See [`notebooks/experiments/README.md`](notebooks/experiments/README.md) for the list.
+Experiment 1 notebooks are in [`notebooks/experiments/1`](notebooks/experiments/1): one architecture each, stratified 70/15/15 split, a frozen-backbone baseline, then fine-tuning. Experiment 2 notebooks are in [`notebooks/experiments/2`](notebooks/experiments/2): MaxViT-T, ConvNeXt-Tiny and EfficientNetV2-S, for 10 epochs then 10 epochs, with `num_workers = 0` and mixed precision on CUDA. The server F1 is the metric. See [`notebooks/experiments/README.md`](notebooks/experiments/README.md).
 
-`FULL_TRAIN` is `False` by default (512 images, one epoch) so you can check the pipeline. Set it to `True` to train on the full set. ImageNet weights (`Weights.DEFAULT`) are downloaded on the first run.
+`FULL_TRAIN = False` limits a run to 512 images and one epoch, to check the pipeline. The finished experiment 1 notebooks, except VGG16, and the three experiment 2 notebooks are set to `True`. ImageNet weights (`Weights.DEFAULT`) are downloaded on the first run.
 
 Submissions are written as JSON under `submissions/`.
 
@@ -79,9 +79,10 @@ src/coco_mlc/          shared library used by the notebooks
 ├── diagnostics.py     error curves, model diagram, bias/variance report
 └── utils.py           seeds, experiment log
 
-notebooks/experiments/ one notebook per architecture
-outputs/               results, checkpoints, figures
-submissions/           JSON files for the leaderboard
+notebooks/experiments/1/  experiment 1, one notebook per architecture
+notebooks/experiments/2/  experiment 2, three architectures, 10 + 10 epochs
+outputs/                  results, checkpoints, figures
+submissions/              JSON files for the leaderboard
 ```
 
 ---
