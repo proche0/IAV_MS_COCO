@@ -1,0 +1,77 @@
+{
+  "notebook": "exp_swin_t.ipynb",
+  "model": "swin_t",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.2848178744316101,
+      "precision_val": 0.262687623500824,
+      "recall_train": 0.8816608786582947,
+      "recall_val": 0.7833778858184814,
+      "f1_train": 0.4305483949258132,
+      "f1_val": 0.39344318935181044
+    },
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 56.94516050741868,
+      "val_error": 60.65568106481896,
+      "test_error": null,
+      "gap": 3.7105205574002795,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.3580437898635864,
+      "precision_val": 0.32095539569854736,
+      "recall_train": 0.9113010764122009,
+      "recall_val": 0.7953706383705139,
+      "f1_train": 0.5141009347013799,
+      "f1_val": 0.45735473360719225
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 48.58990652986201,
+      "val_error": 54.264526639280774,
+      "test_error": 53.86490178704102,
+      "gap": 5.674620109418761,
+      "test_gap": -0.39962485223975364,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "underfit",
+      "title": "Underfitting (high bias)",
+      "train_error": 28.961406898858964,
+      "val_error": 31.143653621233913,
+      "test_error": 33.03665940380627,
+      "gap": 2.1822467223749484,
+      "test_gap": 1.8930057825723559,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search."
+      ]
+    }
+  }
+}
