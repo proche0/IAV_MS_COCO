@@ -2,7 +2,7 @@
 
 Repository for the MS COCO challenge in IAV, by Tayeb and Paul.
 
-**Multi-label** classification over 80 MS COCO classes: one image can contain several object categories. The full statement is in [`sujet.ipynb`](sujet.ipynb).
+**Multi-label** classification over 80 MS COCO classes: one image can contain several object categories.
 
 | | |
 | --- | --- |
@@ -25,9 +25,18 @@ Optimizing accuracy or micro-F1 therefore gives a poor server score. The main le
 
 ---
 
-## Setup
+## Execution instructions
+
+Python 3.10 or newer. A CUDA GPU is recommended; a short run also works on CPU.
+
+1. Unzip this folder and open a terminal in it (the directory that contains `src/` and `requirements.txt`).
+2. Create an environment and install PyTorch, then the rest of the dependencies:
 
 ```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+
 # torch and torchvision must come from the same CUDA 12 build.
 # cu128 needs an NVIDIA driver from the 570 series or newer.
 pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128
@@ -35,35 +44,46 @@ pip install -r requirements.txt
 
 # Older driver: same command with
 # --index-url https://download.pytorch.org/whl/cu124
+
+# CPU-only machine:
+# pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cpu
+# pip install -r requirements.txt
 ```
 
-Check that the GPU is visible:
+3. Check that PyTorch loads (and that the GPU is visible, if you have one):
 
 ```bash
-python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-Expected: a `+cu128` (or `+cu124`) build, `True`, and `NVIDIA GeForce RTX 4060 Ti`.
-
-The dataset is not in the repository. It should sit in `../ms-coco` relative to the repo root, or at the path given by `MSCOCO_ROOT`:
+4. Point the code to the course dataset. It is **not** in this archive. Either place it at `../ms-coco` relative to this folder, or set `MSCOCO_ROOT`:
 
 ```bash
+# Linux/macOS
 export MSCOCO_ROOT=/path/to/ms-coco
+
+# Windows PowerShell
+$env:MSCOCO_ROOT="C:\path\to\ms-coco"
 ```
 
 Expected layout: `images/train/`, `images/test/`, `labels/train/`.
 
+5. Open Jupyter from this folder and run a notebook **from the project root** (or with that folder as the working directory), so `src/coco_mlc` is found:
+
+```bash
+pip install notebook
+jupyter notebook
+```
+
+- **Quick check (grading / smoke test):** open `notebooks/experiments/2/exp_maxvit_t.ipynb`, set `FULL_TRAIN = False` in the configuration cell (512 images, 1 epoch per stage), then **Run All**. The notebook writes a JSON file under `submissions/`.
+- **Full training:** leave `FULL_TRAIN = True` (10 + 10 epochs on the 65,000 labeled images). This takes several hours on an RTX 4060 Ti.
+
+Experiment 1 notebooks are in `notebooks/experiments/1/`. Experiment 2 notebooks are in `notebooks/experiments/2/`. ImageNet weights (`Weights.DEFAULT`) are downloaded on the first run.
+
+This archive contains **no checkpoints, images, or other binaries** (Moodle rule). Training writes weights to `outputs/notebooks/…/*.pth`. The report notebook is `final_notebook.ipynb`.
+
 ---
 
-## How to run an experiment
-
-Experiment 1 notebooks are in [`notebooks/experiments/1`](notebooks/experiments/1): one architecture each, stratified 70/15/15 split, a frozen-backbone baseline, then fine-tuning. Experiment 2 notebooks are in [`notebooks/experiments/2`](notebooks/experiments/2): MaxViT-T, ConvNeXt-Tiny and EfficientNetV2-S, for 10 epochs then 10 epochs, with `num_workers = 0` and mixed precision on CUDA. The server F1 is the metric. See [`notebooks/experiments/README.md`](notebooks/experiments/README.md).
-
-`FULL_TRAIN = False` limits a run to 512 images and one epoch, to check the pipeline. The finished experiment 1 notebooks, except VGG16, and the three experiment 2 notebooks are set to `True`. ImageNet weights (`Weights.DEFAULT`) are downloaded on the first run.
-
-Submissions are written as JSON under `submissions/`.
-
----
 
 ## Repository layout
 
@@ -80,7 +100,7 @@ src/coco_mlc/          shared library used by the notebooks
 └── utils.py           seeds, experiment log
 
 notebooks/experiments/1/  experiment 1, one notebook per architecture
-notebooks/experiments/2/  experiment 2, three architectures, 10 + 10 epochs
+notebooks/experiments/2/  experiment 2, MaxViT-T and ConvNeXt-Tiny, 10 + 10 epochs
 outputs/                  results, checkpoints, figures
 submissions/              JSON files for the leaderboard
 ```

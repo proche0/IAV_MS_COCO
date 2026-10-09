@@ -1,0 +1,83 @@
+{
+  "notebook": "experiments/2/exp_convnext_tiny.ipynb",
+  "model": "convnext_tiny",
+  "baseline_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.3474206328392029,
+      "precision_val": 0.2930949032306671,
+      "recall_train": 0.922137975692749,
+      "recall_val": 0.7267076373100281,
+      "f1_train": 0.504694713465327,
+      "f1_val": 0.4177167562682099
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 49.5305286534673,
+      "val_error": 58.22832437317901,
+      "test_error": null,
+      "gap": 8.697795719711706,
+      "test_gap": null,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "finetune_threshold_0_5": {
+    "last_epoch": {
+      "precision_train": 0.45386821031570435,
+      "precision_val": 0.3797723054885864,
+      "recall_train": 0.9600270986557007,
+      "recall_val": 0.7583154439926147,
+      "f1_train": 0.616348011563073,
+      "f1_val": 0.5060896307581831
+    },
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 38.3651988436927,
+      "val_error": 49.391036924181684,
+      "test_error": 48.737374042845794,
+      "gap": 11.025838080488981,
+      "test_gap": -0.6536628813358902,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  },
+  "calibrated": {
+    "diagnosis": {
+      "regime": "both",
+      "title": "Underfitting and overfitting at the same time",
+      "train_error": 24.417841914969575,
+      "val_error": 30.44991522304783,
+      "test_error": 31.904110428837807,
+      "gap": 6.032073308078257,
+      "test_gap": 1.4541952057899756,
+      "poor_test_generalization": false,
+      "actions": [
+        "Use a larger network (more layers or more units).",
+        "Train for longer.",
+        "Change the optimizer.",
+        "Run a hyperparameter search.",
+        "Collect a larger and more varied training set.",
+        "Use stronger data augmentation.",
+        "Add regularization (L2 penalty, dropout)."
+      ]
+    }
+  }
+}
